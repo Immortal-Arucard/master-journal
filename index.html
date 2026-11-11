@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal — The World Government, Inc.</title>
+<meta name="description" content="A private journal for your TWGI master account.">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#4fc3ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Journal">
+<link rel="icon" href="/icons/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header">
+  <div class="app-bar">
+    <p class="app-name"><a href="/"><img src="/icons/icon-192.png" alt="" width="32" height="32">Journal</a><span class="offline-pill" id="offline-pill" hidden>Offline</span></p>
+    <div class="account-slot" data-account-slot></div>
+  </div>
+</header>
+<main class="page" id="main">
+  <p class="eyebrow">TWGI master account</p>
+  <h1>Journal</h1>
+  <p class="lead">Your private journal. Only you can see it, and it never appears on your public profile.</p>
+  <p class="device-note"><strong>Saved on this device only for now.</strong> Entries stay in this browser on this device. They do not sync to your other devices yet, and clearing this browser's site data erases them.</p>
+  <section class="panel" id="journal-signin" aria-labelledby="journal-signin-h">
+    <h2 id="journal-signin-h">Sign in to open your Journal</h2>
+    <p class="note">Use your TWGI master account. Each account keeps its own separate journal on this device.</p>
+    <a class="take" href="/login/">Sign in</a>
+  </section>
+  <section class="journal" id="journal" hidden aria-label="Your journal">
+    <section class="panel pensieve" id="pensieve" aria-labelledby="pensieve-h">
+      <h2 id="pensieve-h" data-pensieve-name>Pensieve</h2>
+      <p class="note">Speak a note into your Journal. Tap Start, talk, then tap Stop. You can fix the words before saving. The microphone is only used after you tap Start.</p>
+      <p class="note" id="pensieve-support"></p>
+      <div class="row">
+        <button class="take" type="button" id="pensieve-toggle" aria-pressed="false">Start dictation</button>
+        <span class="rec-timer" id="pensieve-timer" aria-live="off"></span>
+      </div>
+      <p class="note" id="pensieve-status" role="status" aria-live="polite"></p>
+      <div class="jform">
+        <label for="pensieve-title">Title (optional)</label>
+        <input type="text" id="pensieve-title" autocomplete="off" maxlength="160">
+        <label for="pensieve-text">Transcript (you can edit it)</label>
+        <textarea id="pensieve-text" maxlength="20000"></textarea>
+        <p class="interim" id="pensieve-interim" aria-live="polite"></p>
+        <div class="row">
+          <button class="take" type="button" id="pensieve-save">Save as journal entry</button>
+          <button class="take ghost" type="button" id="pensieve-discard">Discard</button>
+        </div>
+        <div class="flag" id="pensieve-choice" hidden>
+          <p style="margin:0">Keep the original copy with this entry? That is the audio recording and the unedited transcript, saved on this device only.</p>
+          <div class="actions">
+            <button class="take" type="button" id="pensieve-keep">Save original copy</button>
+            <button class="take ghost" type="button" id="pensieve-skip">Don't save it</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="journal-form-heading">
+      <h2 id="journal-form-heading">New entry</h2>
+      <form class="jform" id="journal-form" novalidate>
+        <input type="hidden" id="journal-id">
+        <label for="journal-when">Date and time</label>
+        <input type="datetime-local" id="journal-when" required>
+        <label for="journal-title">Title (optional)</label>
+        <input type="text" id="journal-title" autocomplete="off">
+        <label for="journal-body">Entry</label>
+        <textarea id="journal-body" required></textarea>
+        <div class="row">
+          <button class="take" type="submit" id="journal-save">Save entry</button>
+          <button class="take ghost" type="button" id="journal-cancel" hidden>Cancel edit</button>
+        </div>
+      </form>
+      <p class="note" id="journal-status" role="status" aria-live="polite"></p>
+    </section>
+    <section class="panel" aria-labelledby="journal-list-h">
+      <h2 id="journal-list-h">Entries</h2>
+      <label class="visually-hidden" for="journal-search">Search entries</label>
+      <input type="search" class="jsearch" id="journal-search" placeholder="Search your entries" autocomplete="off">
+      <p class="note" id="journal-count"></p>
+      <ul class="entries" id="journal-list"></ul>
+    </section>
+    <section class="panel" id="settings" aria-labelledby="settings-h">
+      <h2 id="settings-h">Settings</h2>
+      <form id="settings-form" class="settings-form">
+        <fieldset>
+          <legend>Original dictation copies</legend>
+          <p class="note">After you dictate in the <span data-pensieve-name>Pensieve</span>, should the recording and unedited transcript be kept with the entry?</p>
+          <label class="opt"><input type="radio" name="dictationOriginals" value="ask"> Ask me each time</label>
+          <label class="opt"><input type="radio" name="dictationOriginals" value="always"> Always save automatically</label>
+          <label class="opt"><input type="radio" name="dictationOriginals" value="never"> Never save</label>
+        </fieldset>
+      </form>
+      <p class="note" id="settings-status" role="status" aria-live="polite"></p>
+      <p class="note">This app keeps its own copy of your master profile settings on this device. Your account page on the main site has the same setting.</p>
+    </section>
+  </section>
+</main>
+<footer class="app-footer">
+  <p>Journal · The World Government, Inc.</p>
+  <nav aria-label="Footer">
+    <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
+    <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>
+    <a href="https://theworldgovernmentincorporated.com/">TWGI home</a>
+    <a href="https://theworldgovernmentincorporated.com/privacy.html">Privacy</a>
+  </nav>
+</footer>
+<script src="/assets/app.js"></script>
+<script src="/vendor/supabase.js"></script>
+<script src="/assets/auth.js"></script>
+<script src="/assets/settings.js"></script>
+<script src="/assets/originals.js"></script>
+<script src="/assets/journal.js"></script>
+<script src="/assets/journal-ui.js"></script>
+<script src="/assets/pensieve.js"></script>
+<script src="/assets/settings-ui.js"></script>
+</body>
+</html>
