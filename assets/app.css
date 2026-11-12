@@ -91,7 +91,28 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 /* v5: Start/Stop dictation is a full-width bar fixed to the bottom of the
    home screen, flush with the edge but above the iPhone home indicator. */
 body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-body.has-dictation-bar{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+body.has-dictation-space{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 #pensieve-toggle.dictation-bar{position:fixed;left:0;right:0;bottom:0;z-index:900;width:100%;margin:0;border-radius:0;border:0;border-top:1px solid var(--sky);min-height:calc(60px + env(safe-area-inset-bottom,0px));padding:0 calc(16px + env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) calc(16px + env(safe-area-inset-left,0px));font-size:18px;box-shadow:0 -6px 18px rgba(0,0,0,.45)}
 .pensieve.is-recording #pensieve-toggle.dictation-bar{background:#ff6b6b;border-top-color:#ff6b6b;color:#000}
 body.has-dictation-bar .update-ready{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+
+/* v6: note reminders */
+.reminder-tag{appearance:none;display:inline-flex;align-items:center;gap:4px;max-width:100%;margin:8px 0 0;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--sky);background:#06141f;color:var(--sky);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.reminder-tag.is-off{border-color:var(--line);color:var(--mute)}
+.reminder-prompt p{margin:0}
+.reminder-editor{margin-top:12px;padding:12px;border:1px solid var(--sky);border-radius:12px;background:#050b11}
+.reminder-h{margin:0 0 4px;font-size:18px;color:#fff}
+.rem-field{display:grid;gap:4px}
+.reminder-editor select,.reminder-editor input[type=number]{min-height:44px;border-radius:10px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;padding:0 10px}
+.rem-days{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 12px;min-width:0}
+.rem-days legend{width:100%;margin-bottom:4px;font-size:14px}
+.rem-day{display:inline-flex;align-items:center;gap:6px;min-height:44px}
+.rem-day input{width:20px;height:20px;accent-color:#4fc3ff}
+.rem-preview{color:#fff}
+.rem-warn{color:#ffd27a}
+.rem-error{color:#ff8a8a;min-height:1.2em}
+.take.danger{color:#ff8a8a;border-color:#ff8a8a}
+.entry.is-target article{border-color:var(--sky);box-shadow:0 0 0 2px var(--sky) inset}
+.reminder-editor input[type=checkbox]{width:20px;height:20px;min-height:0;padding:0;accent-color:#4fc3ff;flex:none}
+.reminder-editor select,.reminder-editor input[type=number]{font-size:16px;width:100%}
+.reminder-editor .opt{color:#fff;font-size:16px}

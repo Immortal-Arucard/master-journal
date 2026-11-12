@@ -7,12 +7,22 @@
    app settings (twgi-settings-v1) sync to public.master_settings. Newest
    change wins. Original dictation copies (audio and raw transcript) stay on
    the device that recorded them; they are not uploaded.
-   Uses only the public publishable key session from auth.js. */
+   Uses only the public publishable key session from auth.js.
+
+   v6: each entry's optional reminder rides in the column
+   master_journal_entries.reminder (SQL supabase/master_journal_reminders.sql).
+   Until that column exists the rows are sent exactly as in v4/v5 and
+   reminders stay on the device; a one-time check (select reminder) switches
+   them on, and entries that already have a reminder are re-sent once. */
 (function (global) {
   var J = global.TWGIJournal;
   var S = global.TWGISettings;
   var Sync = global.TWGICloudSync;
   if (!J || !Sync) return;
+
+  var COL_KEY = 'twgi-journal-reminder-col-v1:';
+  var reminderCol = { uid: '', on: false, checked: false };
+  function colCached(uid) { try { return global.localStorage.getItem(COL_KEY + uid) === '1'; } catch (err) { return false; } }
 
   var engine = Sync.create({
     app: 'journal',
@@ -24,17 +34,22 @@
       read: function (uid) { return J.list(uid); },
       write: function (uid, items) { J.applyRemote(uid, items); },
       toRow: function (e, uid, updatedAt) {
-        return { user_id: uid, id: e.id, title: e.title || '', body: e.body || '', entry_at: e.entryAt, created_at: e.createdAt, deleted: false, updated_at: updatedAt };
+        var row = { user_id: uid, id: e.id, title: e.title || '', body: e.body || '', entry_at: e.entryAt, created_at: e.createdAt, deleted: false, updated_at: updatedAt };
+        if (reminderCol.on) row.reminder = e.reminder || null;
+        return row;
       },
       tombRow: function (id, uid, updatedAt) {
         // Same columns as a live row, so a mixed batch never sends NULLs.
-        return { user_id: uid, id: id, title: '', body: '', entry_at: updatedAt, created_at: updatedAt, deleted: true, updated_at: updatedAt };
+        var tomb = { user_id: uid, id: id, title: '', body: '', entry_at: updatedAt, created_at: updatedAt, deleted: true, updated_at: updatedAt };
+        if (reminderCol.on) tomb.reminder = null;
+        return tomb;
       },
       fromRow: function (row) {
         if (!row || typeof row.id !== 'string') return null;
         if (row.deleted) return { id: row.id, updatedAt: row.updated_at, deleted: true };
         return { id: row.id, updatedAt: row.updated_at, deleted: false, item: {
-          id: row.id, title: row.title || '', body: row.body || '', entryAt: row.entry_at, createdAt: row.created_at
+          id: row.id, title: row.title || '', body: row.body || '', entryAt: row.entry_at, createdAt: row.created_at,
+          reminder: 'reminder' in row ? row.reminder : undefined
         } };
       }
     },
@@ -77,7 +92,46 @@
 
   global.TWGIJournalSync = { engine: engine };
 
-  function bind(state) { engine.start(state && state.user ? state.user.id : null); }
+  /* One-time check whether the reminder column exists (the v6 SQL is applied). */
+  function checkReminderColumn(uid) {
+    reminderCol = { uid: uid, on: colCached(uid), checked: false };
+    J.sync.reminders = reminderCol.on ? 'on' : 'unknown';
+    var c = global.TWGIAccount && global.TWGIAccount.client ? global.TWGIAccount.client() : null;
+    if (!c || !c.from) return Promise.resolve(reminderCol.on);
+    var q;
+    try { q = c.from('master_journal_entries').select('id,reminder').eq('user_id', uid).limit(1); }
+    catch (err) { return Promise.resolve(reminderCol.on); }
+    return Promise.resolve(q).then(function (res) {
+      if (reminderCol.uid !== uid) return false;
+      reminderCol.checked = true;
+      if (res && res.error) {
+        var offline = global.navigator && global.navigator.onLine === false;
+        if (!offline && !reminderCol.on) J.sync.reminders = 'off';
+        return reminderCol.on;
+      }
+      var first = !reminderCol.on;
+      reminderCol.on = true;
+      J.sync.reminders = 'on';
+      try { global.localStorage.setItem(COL_KEY + uid, '1'); } catch (err) {}
+      if (first) {
+        // Re-send entries whose reminder never reached the cloud.
+        J.list(uid).forEach(function (e) { if (e.reminder) { try { J.setReminder(uid, e.id, e.reminder); } catch (err) {} } });
+        engine.soon(100);
+      }
+      return true;
+    }, function () { return reminderCol.on; }).then(function (v) {
+      document.dispatchEvent(new CustomEvent('twgi-journal-reminders-status'));
+      return v;
+    });
+  }
+  J.sync.reminders = 'unknown';
+  J.sync.checkReminders = function () { return reminderCol.uid ? checkReminderColumn(reminderCol.uid) : Promise.resolve(false); };
+
+  function bind(state) {
+    var uid = state && state.user ? state.user.id : null;
+    if (uid) checkReminderColumn(uid); else reminderCol = { uid: '', on: false, checked: false };
+    engine.start(uid);
+  }
   if (global.TWGIAccount) global.TWGIAccount.subscribe(bind);
   else document.addEventListener('twgi-account-api', function () { global.TWGIAccount.subscribe(bind); }, { once: true });
 })(window);

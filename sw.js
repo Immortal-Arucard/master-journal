@@ -1,7 +1,7 @@
 /* Journal service worker. Own cache, separate from the main TWGI site.
    Precaches the app shell so the Journal opens offline. Never caches
    Supabase or other cross-origin requests. */
-var CACHE = 'master-journal-v5';
+var CACHE = 'master-journal-v6';
 var APP_TITLE = 'Journal';
 var PRECACHE = [
   '/',
@@ -13,6 +13,7 @@ var PRECACHE = [
   '/assets/app.js',
   '/assets/auth.js',
   '/assets/login.js',
+  '/assets/reminders.js',
   '/assets/journal.js',
   '/assets/journal-ui.js',
   '/assets/settings.js',

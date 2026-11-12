@@ -74,6 +74,7 @@
   var stream = null, recorder = null, chunks = [], recognizer = null;
   var rawTranscript = '', startedAt = 0, durationMs = 0, audioBlob = null, tick = null;
   var pendingEntryId = '';
+  var savedEntryId = ''; /* v6: asks "Add a reminder?" after saving */
   /* live text state */
   var liveOn = false, base = '', committed = '', curFinal = '', curInterim = '';
   var gotWords = false, heardAudio = false, warned = false, fatal = '', watchdog = null;
@@ -140,13 +141,26 @@
     if (!a || a === document.body) return false;
     return !!(a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName || '')) && a.type !== 'radio' && a.type !== 'checkbox';
   }
-  function editingEntry() { return !!(journalCancel && !journalCancel.hidden); }
+  function editingEntry() { return !!(journalCancel && !journalCancel.hidden) || !!document.querySelector('[data-reminder-editor]'); }
+  /* v6: the page keeps its bottom space whenever the bar can appear, so
+     showing/hiding the bar never moves the page; and the bar only comes back
+     after the finger is lifted, so a tap can never land on it by surprise. */
+  var pointerDown = false;
   function updateBar() {
+    if (!document || !document.body) return;
     var onHome = !!userId && !(journalRoot && journalRoot.hidden);
     var show = recording || (onHome && !editingEntry() && !typingElsewhere());
+    var shown = toggle.classList.contains('dictation-bar');
+    document.body.classList.toggle('has-dictation-space', recording || onHome);
+    if (show && !shown && pointerDown) return; /* wait for the finger to lift */
     document.body.classList.toggle('has-dictation-bar', show);
     toggle.classList.toggle('dictation-bar', show);
   }
+  var BAR_RETURN_MS = 350;
+  function laterBar() { setTimeout(updateBar, BAR_RETURN_MS); }
+  document.addEventListener('pointerdown', function () { pointerDown = true; }, true);
+  document.addEventListener('pointerup', function () { pointerDown = false; laterBar(); }, true);
+  document.addEventListener('pointercancel', function () { pointerDown = false; laterBar(); }, true);
   function labelToggle() {
     toggle.textContent = recording ? 'Stop dictation' + (startedAt ? ' · ' + fmt(Date.now() - startedAt) : '') : 'Start dictation';
   }
@@ -371,9 +385,11 @@
   }
 
   function finished(msg) {
+    var id = savedEntryId; savedEntryId = '';
     reset();
     say(msg);
     document.dispatchEvent(new CustomEvent('twgi-journal-changed'));
+    if (id) document.dispatchEvent(new CustomEvent('twgi-journal-new-entry', { detail: { id: id } }));
   }
 
   toggle.addEventListener('click', function () {
@@ -394,6 +410,7 @@
     try {
       entry = J.save(userId, { title: titleInput.value, body: text.value, entryAt: new Date(startedAt || Date.now()).toISOString() });
     } catch (err) { say(err && err.message ? err.message : 'Could not save.'); return; }
+    savedEntryId = entry.id;
     if (!hasOriginal()) { finished(J.sync && J.sync.enabled ? 'Entry saved. It syncs to your other devices.' : 'Entry saved on this device.'); return; }
     var pref = S ? S.get(userId, 'journal', 'dictationOriginals') : 'ask';
     if (pref === 'never') { finished('Entry saved. The original recording was not kept (your setting).'); return; }
@@ -431,7 +448,8 @@
   }
 
   document.addEventListener('focusin', function () { updateBar(); });
-  document.addEventListener('focusout', function () { setTimeout(updateBar, 0); });
+  document.addEventListener('twgi-journal-editor', function () { updateBar(); });
+  document.addEventListener('focusout', laterBar);
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 

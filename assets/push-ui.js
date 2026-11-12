@@ -1,6 +1,9 @@
 /* Journal daily reminder: "Time to journal" at the hour you choose.
    Mounts into #journal-reminder. The permission prompt only appears after a
-   tap on Enable notifications. Nothing from your entries is ever sent; the
+   tap on Enable notifications. v6: this switch also lets note reminders
+   (set on each note) reach this device; the push service reads only a
+   reminder's name, time and repeat, never the note's text. Nothing else
+   from your entries is ever sent; the
    push service only knows your reminder time and time zone. */
 (function (global) {
   var APP = 'journal';
@@ -55,6 +58,7 @@
     var tw = el('label', 'task-field'); tw.appendChild(el('span', '', 'Reminder time')); tw.appendChild(time);
     box.appendChild(tw);
     box.appendChild(el('p', 'note', 'Time zone: ' + ((settings && settings.tz) || Push.timeZone()) + '.'));
+    box.appendChild(el('p', 'note', 'Note reminders (set on each note) also arrive on this device while notifications are on. The notification service sees only a reminder\u2019s name, time and repeat, never your note\u2019s text.'));
     toggle.addEventListener('change', save);
     time.addEventListener('change', save);
     var test = el('button', 'take ghost', 'Send a test notification'); test.type = 'button'; test.setAttribute('data-push-test', 'true');

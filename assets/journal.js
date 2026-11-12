@@ -7,6 +7,11 @@
        returns the list to store (info.deleted lists removed ids).
      TWGIJournal.applyRemote(userId, entries) stores a merged list from the
        cloud and tells onChange listeners (the screen repaints).
+   v6: an entry may carry an optional reminder (entry.reminder, rules in
+   assets/reminders.js). It is part of the entry, so it syncs with it.
+     save(userId, { ..., reminder }) sets it (null removes it; leaving the
+       key out keeps the current one).
+     setReminder(userId, id, reminder|null) changes only the reminder.
    Journal entries are never shown on public profiles. */
 (function (global) {
   var PREFIX = 'twgi-journal-v1:';
@@ -41,7 +46,7 @@
     var title = strip(entry.title, MAX_TITLE).trim();
     if (!body.trim() && !title) return null;
     var now = new Date().toISOString();
-    return {
+    var out = {
       id: entry.id,
       title: title,
       body: body,
@@ -49,6 +54,10 @@
       createdAt: validDate(entry.createdAt) || now,
       updatedAt: validDate(entry.updatedAt) || now
     };
+    var R = global.TWGIReminders;
+    var reminder = entry.reminder && R ? R.clean(entry.reminder) : null;
+    if (reminder) out.reminder = reminder;
+    return out;
   }
 
   function sortNewest(list) {
@@ -97,7 +106,8 @@
         body: input && input.body,
         entryAt: (input && input.entryAt) || (existing && existing.entryAt) || now,
         createdAt: existing ? existing.createdAt : now,
-        updatedAt: now
+        updatedAt: now,
+        reminder: input && 'reminder' in input ? input.reminder : (existing && existing.reminder) || null
       });
       if (!entry) throw new Error('Write something before saving.');
       if (!existing && list.length >= MAX_ENTRIES) throw new Error('This device has reached the ' + MAX_ENTRIES + '-entry limit.');
@@ -114,8 +124,28 @@
       api.sync.push(userId, next);
       return list.length !== next.length;
     },
+    setReminder: function (userId, id, reminder) {
+      var existing = read(userId).filter(function (e) { return e.id === id; })[0];
+      if (!existing) throw new Error('That note is no longer on this device.');
+      var R = global.TWGIReminders;
+      var value = reminder == null ? null : (R ? R.clean(reminder) : null);
+      if (reminder != null && !value) throw new Error('Choose a date and time for the reminder.');
+      return api.save(userId, { id: id, title: existing.title, body: existing.body, entryAt: existing.entryAt, reminder: value });
+    },
     applyRemote: function (userId, entries) {
       if (!storageKey(userId) || !Array.isArray(entries)) return false;
+      // v6: a cloud copy without the reminder field (column not switched on
+      // yet, or an older app) keeps this device's reminder.
+      var local = {};
+      read(userId).forEach(function (e) { local[e.id] = e; });
+      entries = entries.map(function (e) {
+        if (e && e.reminder === undefined && local[e.id] && local[e.id].reminder) {
+          var copy = {}; Object.keys(e).forEach(function (k) { copy[k] = e[k]; });
+          copy.reminder = local[e.id].reminder;
+          return copy;
+        }
+        return e;
+      });
       write(userId, entries.map(clean).filter(Boolean), true);
       listeners.forEach(function (fn) { try { fn(userId); } catch (err) {} });
       return true;
