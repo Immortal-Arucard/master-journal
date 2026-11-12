@@ -155,7 +155,23 @@
     if (show && !shown && pointerDown) return; /* wait for the finger to lift */
     document.body.classList.toggle('has-dictation-bar', show);
     toggle.classList.toggle('dictation-bar', show);
+    if (show && typeof liftBar === 'function' && vv !== undefined) liftBar();
   }
+  /* v7: if iOS leaves the visible area shorter than the layout viewport
+     (keyboard just closed, or the Home Screen app's short viewport), lift the
+     bar by that much so what you see is what you can tap. Never while typing. */
+  var vv = global.visualViewport || null;
+  function liftBar() {
+    var lift = 0;
+    if (vv && global.innerHeight && !typingElsewhere() && Math.abs((vv.scale || 1) - 1) < 0.01) {
+      var covered = global.innerHeight - ((vv.height || 0) + (vv.offsetTop || 0));
+      if (covered > 1 && covered < global.innerHeight / 3) lift = Math.round(covered);
+    }
+    document.documentElement.style.setProperty('--bar-lift', lift + 'px');
+    return lift;
+  }
+  if (vv && vv.addEventListener) { vv.addEventListener('resize', liftBar); vv.addEventListener('scroll', liftBar); }
+  global.addEventListener('resize', liftBar);
   var BAR_RETURN_MS = 350;
   function laterBar() { setTimeout(updateBar, BAR_RETURN_MS); }
   document.addEventListener('pointerdown', function () { pointerDown = true; }, true);
@@ -453,7 +469,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, NO_WORDS_MS: NO_WORDS_MS };
+  global.TWGIPensieve._debug = { isApple: isApple, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, NO_WORDS_MS: NO_WORDS_MS };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }

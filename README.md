@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v6`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v7`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -32,3 +32,13 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   until that column exists notes sync as before and reminders stay on the device. The push Worker
   sends them (see backend `DEPLOY-v6-note-reminders.md`); tapping one opens `/?note=<id>`.
 - `supabase/master_journal.sql` was the first PROPOSED design. It is superseded by `supabase/master_journal_sync.sql`; do NOT apply the old file.
+
+## v7 — Start dictation bar taps
+- Bug: on iPhone (Home Screen app) tapping the bottom "Start dictation" bar hit the page behind it.
+- Cause: the v5 viewport `viewport-fit=cover` makes iOS installed web apps draw the page to the full
+  screen while touches still use a shorter viewport (WebKit bug 254868), so the bar's drawn spot and its
+  tap spot did not match. iOS can also leave the visible viewport short after the keyboard closes (WebKit 297779).
+- Fix: removed `viewport-fit=cover`; the bar uses `bottom: var(--bar-lift, 0px)` and `pensieve.js` lifts it
+  into the visible area whenever `visualViewport` is shorter than the layout viewport (not while typing,
+  not when zoomed). `pointer-events:auto`, z-index 900. Save-entry tap fix from v6 unchanged.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`. No SQL, no Worker change.
