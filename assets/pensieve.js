@@ -51,7 +51,15 @@
    closed disclosure, and the Live text / Audio only radios sit under the
    Title and Transcript fields, hidden behind a compact "Mode: Live text ·
    Change" line, so they are not cut off by the Start dictation bar. Mode
-   behaviour, the one-mic-job rule and saved settings are unchanged. */
+   behaviour, the one-mic-job rule and saved settings are unchanged.
+
+   v13 (title microphone). A small mic button inside the right edge of the
+   Title field starts speech recognition for the title only (always live text,
+   same language / processLocally=false setup as v9). The first utterance is
+   trimmed, a trailing period is dropped, and it replaces an empty title or
+   is appended with a space. It stops after that utterance, after about 8 s of
+   silence, or on a second tap. Main dictation and the title mic cannot run
+   at the same time. */
 (function (global) {
   var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
@@ -70,6 +78,8 @@
   var text = document.getElementById('pensieve-text');
   var interim = document.getElementById('pensieve-interim');
   var titleInput = document.getElementById('pensieve-title');
+  var titleMic = document.getElementById('pensieve-title-mic');
+  var titleWrap = document.getElementById('pensieve-title-wrap');
   var saveBtn = document.getElementById('pensieve-save');
   var discardBtn = document.getElementById('pensieve-discard');
   var choice = document.getElementById('pensieve-choice');
@@ -123,6 +133,7 @@
   var NO_WORDS_MS = cfg.noWordsMs || 8000;
   var STOP_WAIT_MS = cfg.stopWaitMs || 1500;
   var LIVE_SAVED_MS = cfg.liveSavedMs || 2600; /* v10: how long "Saved to transcript" stays */
+  var TITLE_SILENCE_MS = cfg.titleSilenceMs || 8000; /* v13: stop title mic after this long with no utterance */
   var LIVE_FADE_MS = cfg.liveFadeMs || 350;
   var KEYBOARD_TIP = 'Tap the Transcript box, then tap the microphone key on your keyboard (on Android, the mic on Gboard) and speak. That works even when live speech-to-text does not.';
 
@@ -167,6 +178,9 @@
   var liveOn = false, base = '', committed = '', curFinal = '', curInterim = '';
   var gotWords = false, heardAudio = false, warned = false, fatal = '', watchdog = null;
   var gen = 0, quickEnds = 0, sessionStart = 0, endWaiter = null;
+  /* v13: title-only recognition (separate from the main dictation session) */
+  var titleListening = false, titleRec = null, titleGen = 0;
+  var titleBase = '', titleInterim = '', titleFinal = '', titleFatal = '', titleWatch = null;
 
   function say(t) { statusNode.textContent = t || ''; }
   function fmt(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
@@ -438,6 +452,7 @@
     if (modeBox) Array.prototype.forEach.call(modeBox.querySelectorAll('input'), function (i) { i.disabled = on; });
     if (modeChange) modeChange.disabled = on;
     text.readOnly = on && liveOn;
+    updateTitleMic();
     updateBar();
   }
 
@@ -586,6 +601,7 @@
   }
 
   function start() {
+    if (titleListening) return;
     say('');
     hideDockNote();
     audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; liveOn = false;
@@ -656,6 +672,7 @@
   }
 
   function reset() {
+    if (titleListening) stopTitle({ silent: true });
     text.value = ''; titleInput.value = ''; interim.textContent = '';
     audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; pendingEntryId = '';
     base = ''; committed = ''; curFinal = ''; curInterim = '';
@@ -705,6 +722,167 @@
     activate();
   });
 
+
+  /* ----- v13: dictate the title only ----- */
+  function cleanTitleUtterance(s) {
+    return String(s || '').replace(/\s+/g, ' ').trim().replace(/[.。]\s*$/, '');
+  }
+  function setTitleValue(s) {
+    var max = parseInt(titleInput.getAttribute('maxlength'), 10) || 160;
+    titleInput.value = String(s || '').slice(0, max);
+  }
+  function commitTitle() {
+    var piece = cleanTitleUtterance(titleFinal || titleInterim);
+    if (piece) setTitleValue(titleBase ? titleBase + ' ' + piece : piece);
+    else setTitleValue(titleBase);
+    titleInput.placeholder = '';
+  }
+  function paintTitleHearing() {
+    if (!titleInput) return;
+    if (titleFinal) {
+      var preview = String(titleFinal).replace(/\s+/g, ' ').trim();
+      setTitleValue(titleBase ? titleBase + ' ' + preview : preview);
+      titleInput.placeholder = '';
+    } else if (titleInterim) {
+      if (titleBase) {
+        setTitleValue(titleBase + ' ' + titleInterim);
+        titleInput.placeholder = '';
+      } else {
+        setTitleValue('');
+        titleInput.placeholder = titleInterim;
+      }
+    } else {
+      setTitleValue(titleBase);
+      titleInput.placeholder = '';
+    }
+  }
+  function armTitleSilence() {
+    clearTimeout(titleWatch);
+    titleWatch = setTimeout(onTitleSilence, TITLE_SILENCE_MS);
+  }
+  function onTitleSilence() {
+    titleWatch = null;
+    if (!titleListening) return;
+    if (titleFinal || titleInterim) stopTitle();
+    else { titleFinal = ''; titleInterim = ''; stopTitle({ silent: true }); say('No words came through for the title.'); }
+  }
+  function updateTitleMic() {
+    if (!titleMic) return;
+    titleMic.disabled = !!recording || !userId;
+  }
+  function setTitleListening(on) {
+    titleListening = on;
+    if (titleMic) {
+      titleMic.classList.toggle('is-listening', on);
+      titleMic.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    if (titleWrap) titleWrap.classList.toggle('is-listening', on);
+    if (toggle) {
+      if (on) toggle.disabled = true;
+      else if (!(choice && !choice.hidden)) toggle.disabled = false;
+    }
+    if (!on) titleInput.placeholder = '';
+    updateTitleMic();
+    updateBar();
+  }
+  function newTitleRecognizer() {
+    var my = ++titleGen;
+    var r = new Recognition();
+    var lang = langs[langStep] || '';
+    if (lang) r.lang = lang;
+    r.continuous = false;
+    r.interimResults = true;
+    try { if ('processLocally' in r) r.processLocally = false; } catch (err) {}
+    r.onresult = function (ev) {
+      if (my !== titleGen || !titleListening) return;
+      var finals = [], live = [];
+      for (var i = 0; i < ev.results.length; i++) {
+        var res = ev.results[i];
+        var t = res && res[0] ? res[0].transcript : '';
+        if (res.isFinal) finals.push(t); else live.push(t);
+      }
+      if (finals.length) {
+        titleFinal = finals[0];
+        titleInterim = '';
+        paintTitleHearing();
+        stopTitle();
+        return;
+      }
+      titleInterim = joinPieces(live);
+      paintTitleHearing();
+      if (titleInterim) armTitleSilence();
+    };
+    r.onerror = function (ev) {
+      if (my !== titleGen || !titleListening) return;
+      var code = (ev && ev.error) || 'unknown';
+      if (code === 'no-speech' || code === 'aborted') return;
+      if (code === 'language-not-supported' && !titleFinal && !titleInterim && langStep < langs.length - 1) {
+        langStep++;
+        titleGen++;
+        try { r.abort(); } catch (err) {}
+        try { titleRec = newTitleRecognizer(); titleRec.start(); return; }
+        catch (err) { titleRec = null; }
+      }
+      titleFatal = code;
+      try { r.abort(); } catch (err) {}
+      stopTitle();
+    };
+    r.onend = function () {
+      if (my !== titleGen) return;
+      if (!titleListening) return;
+      if (titleFatal) { stopTitle(); return; }
+      if (titleFinal || titleInterim) stopTitle();
+    };
+    return r;
+  }
+  function startTitle() {
+    if (recording || !userId) return;
+    hideDockNote();
+    if (!Recognition) {
+      try { titleInput.focus(); } catch (err) {}
+      say('Tap the microphone key on your keyboard and speak the title, or type it.');
+      return;
+    }
+    titleBase = String(titleInput.value || '').replace(/\s+/g, ' ').trim();
+    titleInterim = ''; titleFinal = ''; titleFatal = '';
+    langs = langChain(); langStep = 0;
+    try {
+      titleRec = newTitleRecognizer();
+      titleRec.start();
+      setTitleListening(true);
+      armTitleSilence();
+    } catch (err) {
+      titleRec = null;
+      setTitleListening(false);
+      var msg = errorMessage('start-failed');
+      say(msg); showDockNote(msg, 'start-failed');
+    }
+  }
+  function stopTitle(opts) {
+    opts = opts || {};
+    if (!titleListening && !titleRec) return;
+    clearTimeout(titleWatch); titleWatch = null;
+    var r = titleRec; titleRec = null;
+    titleGen++;
+    try { if (r) r.stop(); } catch (err) { try { if (r) r.abort(); } catch (e) {} }
+    var fatal = titleFatal; titleFatal = '';
+    setTitleListening(false);
+    if (fatal && !titleFinal && !titleInterim) {
+      setTitleValue(titleBase);
+      if (!opts.silent) { var msg = errorMessage(fatal); say(msg); showDockNote(msg, fatal); }
+      titleInterim = ''; titleFinal = '';
+      return;
+    }
+    if (!opts.silent) commitTitle();
+    else { setTitleValue(titleBase); titleInput.placeholder = ''; }
+    titleInterim = ''; titleFinal = '';
+  }
+  function toggleTitle() {
+    if (titleListening) stopTitle();
+    else startTitle();
+  }
+  if (titleMic) titleMic.addEventListener('click', toggleTitle);
+
   if (keyboardBtn) keyboardBtn.addEventListener('click', function () {
     if (recording) return;
     text.readOnly = false;
@@ -715,6 +893,7 @@
 
   saveBtn.addEventListener('click', async function () {
     if (!userId || recording) return;
+    if (titleListening) stopTitle();
     closeLive(true); /* v10 */
     var entry;
     try {
@@ -753,7 +932,9 @@
   function show(state) {
     var signedIn = !!(state && state.user && state.user.id);
     if (!signedIn && recording) stop();
+    if (!signedIn && titleListening) stopTitle({ silent: true });
     userId = signedIn ? state.user.id : '';
+    updateTitleMic();
     updateBar();
   }
 
@@ -763,7 +944,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive };
+  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS, TITLE_SILENCE_MS: TITLE_SILENCE_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive, titleListening: function () { return titleListening; } };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }

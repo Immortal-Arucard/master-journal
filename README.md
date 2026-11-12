@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v12`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v13`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -130,5 +130,26 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   Choosing a mode still works exactly as before (one-mic-job rule, saving, and settings are
   unchanged).
 - Version label "Journal v12", cache `master-journal-v12`, precache with `?v=12`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.
+
+## v13 — Dictate the title with a mic in the Title field
+- A small microphone button sits inside the right edge of the Pensieve "Title (optional)"
+  field (icon button, aria-label "Dictate title", 40px tap target, vertically centred;
+  the field is padded so typed text never runs under it).
+- One tap starts speech recognition for the title only, always as live text (the Mode
+  setting is ignored). It uses the same setup as v9/v10: processLocally off, a full
+  language tag from Settings > Dictation language, retries (en-US, then unset), default
+  English (US).
+- The first utterance is trimmed, a trailing period is dropped, and it either replaces an
+  empty title or is appended with a space. Recognition stops after that utterance, after
+  about 8 seconds of silence, or on a second tap. While listening, the icon is red and
+  pulses, and interim words show in the field in lighter italic (or as a placeholder).
+- Main dictation (or audio recording) and the title mic cannot run at the same time: the
+  other control is disabled. Errors use the existing message above the bar and the
+  "Last dictation problem" line. If speech recognition is not available, the button
+  focuses the Title field so the keyboard microphone can be used. The existing
+  "Use keyboard microphone" fallback is unchanged.
+- Version label "Journal v13", cache `master-journal-v13`, precache with `?v=13`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
   No SQL, no Worker change.

@@ -49,6 +49,17 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .jform{display:grid;gap:10px}
 .jform label{font-size:14px;color:var(--mute)}
 .jform input,.jform textarea,.jsearch{width:100%;min-width:0;min-height:48px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;font-size:16px}
+/* v13: small mic inside the right edge of the Pensieve Title field. */
+.title-mic-wrap{position:relative;min-width:0}
+.title-mic-wrap #pensieve-title{padding-right:52px}
+.title-mic{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;min-width:40px;min-height:40px;margin:0;padding:0;border:0;border-radius:10px;background:transparent;color:var(--sky);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.title-mic svg{width:22px;height:22px;display:block}
+.title-mic:disabled{opacity:.4;cursor:not-allowed}
+.title-mic.is-listening,.title-mic[aria-pressed="true"]{color:#ff6b6b}
+.title-mic.is-listening svg{animation:title-mic-pulse 1s ease-in-out infinite}
+@keyframes title-mic-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.title-mic-wrap.is-listening #pensieve-title{color:var(--mute);font-style:italic}
+.title-mic-wrap.is-listening #pensieve-title::placeholder{color:var(--mute);font-style:italic;opacity:1}
 .jform textarea{min-height:180px;resize:vertical;line-height:1.5}
 .jform .row{display:flex;flex-wrap:wrap;gap:8px}
 .jform .take{margin-top:0}
