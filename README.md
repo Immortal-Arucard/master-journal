@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v8`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v9`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -65,3 +65,27 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
     so the CDN or the phone's HTTP cache cannot hand an older file to the new version.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/app.js`, `assets/pensieve.js`,
   `README.md`. No SQL, no Worker change.
+
+## v9 — Android Chrome: "Speech-to-text is not available for your language here"
+- The phone is Android (Chrome, installed app), not iPhone. The tap reached the bar; Chrome's speech
+  recogniser then fired `language-not-supported`.
+- Cause: since v5, `pensieve.js` switched `processLocally` on for every non-Apple browser. In Chrome
+  139+ that means "on-device recognition only", which refuses any language whose offline speech pack is
+  not downloaded on the phone. `lang` was also passed straight from `navigator.language` (could be a
+  bare `en`).
+- Fixes:
+  - `processLocally` is never switched on (set to `false` where it exists), so Chrome uses its normal
+    (cloud) speech service.
+  - Language is always a well-formed BCP-47 tag. New setting **Settings > Dictation language**
+    (`journal.dictationLanguage`, synced with the other settings; default English (US); Automatic =
+    the phone's language, with bare tags like `en` mapped to `en-US`, unknown → `en-US`).
+  - On `language-not-supported` (before any words) the Journal retries once with `en-US`, then once with
+    no language set, before showing the message.
+  - Messages are platform-neutral (Android/Gboard mic mentioned); "Use keyboard microphone" is offered at
+    the bar on every phone and focuses the Transcript box. "Last dictation problem" now shows the
+    language(s) tried and the platform.
+  - Android gets the one-mic-job rule like iPhone (live text OR audio only), because Chrome's recogniser
+    and a MediaRecorder cannot reliably share the microphone on Android.
+  - Version label "Journal v9", cache `master-journal-v9`, precache with `?v=9`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `assets/settings.js`,
+  `assets/settings-ui.js`, `README.md`. No SQL (the setting lives in the existing settings JSON), no Worker change.

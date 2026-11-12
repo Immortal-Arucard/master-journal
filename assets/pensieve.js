@@ -23,7 +23,18 @@
    recogniser is used for each session, and every failure shows a clear
    message plus the keyboard-microphone fallback (works in the Home Screen
    app). The Start/Stop button is a full-width bar fixed to the bottom of
-   the home screen. */
+   the home screen.
+
+   v9 (Android Chrome fix). Christopher's phone is Android, not iPhone. The
+   tap reached the bar, but Chrome answered "language-not-supported" because
+   v5-v8 switched processLocally on (true) for every non-Apple browser.
+   That asks Chrome's newer ON-DEVICE recogniser only, which rejects any
+   language whose offline pack is not downloaded. v9 never asks for on-device
+   only (cloud recognition is allowed), always sets a well-formed language tag
+   (Settings > Dictation language, default English (US)), and on
+   "language-not-supported" retries once with en-US and once with no language
+   before showing a message. Android also gets the one-mic-job rule (Chrome's
+   recogniser and a recording cannot reliably share the microphone there). */
 (function (global) {
   var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
@@ -70,12 +81,46 @@
   /* Every browser on iPhone/iPad is Safari's engine; iPadOS reports "Macintosh" with touch. */
   var isApple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && (nav.maxTouchPoints || 0) > 1);
   var standalone = nav.standalone === true || !!(global.matchMedia && global.matchMedia('(display-mode: standalone)').matches);
-  /* iOS cannot run speech recognition and a recording at the same time. */
-  var oneMicJob = isApple;
+  var isAndroid = /Android/i.test(ua);
+  /* iOS cannot run speech recognition and a recording at the same time; on
+     Android, Chrome's recogniser (Google speech service) also needs the mic to
+     itself, otherwise it hears nothing or fails with audio-capture. */
+  var oneMicJob = isApple || isAndroid;
   var cfg = global.TWGIPensieveConfig || {}; /* tests only */
   var NO_WORDS_MS = cfg.noWordsMs || 8000;
   var STOP_WAIT_MS = cfg.stopWaitMs || 1500;
-  var KEYBOARD_TIP = 'Tap the Transcript box, then tap the microphone key on your keyboard and speak. That always works, including in the Home Screen app.';
+  var KEYBOARD_TIP = 'Tap the Transcript box, then tap the microphone key on your keyboard (on Android, the mic on Gboard) and speak. That works even when live speech-to-text does not.';
+
+  /* ----- v9: dictation language ----- */
+  var LANG_RE = /^([A-Za-z]{2,3})(?:-([A-Za-z]{4}))?(?:-([A-Za-z]{2}|[0-9]{3}))?$/;
+  var REGION_FOR = { en: 'en-US', es: 'es-US', fr: 'fr-FR', de: 'de-DE', pt: 'pt-BR', it: 'it-IT', hi: 'hi-IN', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', ar: 'ar-SA', ru: 'ru-RU', nl: 'nl-NL' };
+  /* Returns a full BCP-47 tag like "en-US", or '' if v is not usable. */
+  function fullTag(v) {
+    var m = LANG_RE.exec(String(v || '').trim().replace(/_/g, '-'));
+    if (!m) return '';
+    var lang = m[1].toLowerCase();
+    if (lang === 'und' || lang === 'mul' || lang === 'zxx') return '';
+    if (!m[3]) return REGION_FOR[lang] || '';
+    return lang + (m[2] ? '-' + m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase() : '') + '-' + m[3].toUpperCase();
+  }
+  function deviceLang() {
+    var list = [].concat(nav.languages || [], nav.language || []);
+    for (var i = 0; i < list.length; i++) { var t = fullTag(list[i]); if (t) return t; }
+    return 'en-US';
+  }
+  /* The language chain for one dictation: the chosen one, then en-US, then
+     no language at all (the browser's own default). '' means "not set". */
+  function langChain() {
+    var pick = S && userId ? S.get(userId, 'journal', 'dictationLanguage') : 'en-US';
+    var first = pick === 'auto' ? deviceLang() : (fullTag(pick) || 'en-US');
+    var chain = [first];
+    if (first !== 'en-US') chain.push('en-US');
+    chain.push('');
+    return chain;
+  }
+  function langName(l) { return l ? l : 'browser default'; }
+  var langs = ['en-US'], langStep = 0;
+  function langsTried() { return langs.slice(0, langStep + 1).map(langName).join(', then '); }
 
   var userId = '';
   var recording = false;
@@ -132,11 +177,13 @@
     if (!Recognition) {
       bits.push(isApple && standalone
         ? 'Live speech-to-text is not available in the Home Screen app on this iPhone. ' + KEYBOARD_TIP + ' You can also record audio, or open the Journal in Safari for live text.'
+        : !Recognition && isAndroid
+        ? 'This browser cannot turn speech into text. Open the Journal in Chrome for live text, or ' + KEYBOARD_TIP.charAt(0).toLowerCase() + KEYBOARD_TIP.slice(1)
         : 'This browser cannot turn speech into text. You can still record audio and type your note, or use your keyboard’s microphone key.');
     }
     if (!canRecord) bits.push('This browser cannot record audio here. ' + (Recognition ? 'Speech-to-text may still work.' : 'You can type your note.'));
-    if (Recognition) bits.push('Speech-to-text uses your device’s built-in recognition. TWGI never sends your audio or words anywhere; ' + (isApple ? 'on iPhone, Apple’s Siri & Dictation service turns your speech into text.' : 'on some browsers, the browser’s own speech service may process audio.'));
-    if (oneMicJob && Recognition && canRecord) bits.push('On iPhone the microphone can either show live text or record audio, not both at once.');
+    if (Recognition) bits.push('Speech-to-text uses your device’s built-in recognition. TWGI never sends your audio or words anywhere; ' + (isApple ? 'on iPhone, Apple’s Siri & Dictation service turns your speech into text.' : isAndroid ? 'on Android, Chrome uses Google’s speech service to turn your speech into text.' : 'on some browsers, the browser’s own speech service may process audio.'));
+    if (oneMicJob && Recognition && canRecord) bits.push('On this phone the microphone can either show live text or record audio, not both at once.');
     support.textContent = bits.join(' ');
     if (modeBox) modeBox.hidden = !(oneMicJob && Recognition && canRecord);
     if (isApple || !Recognition) showHelp('Tip: ' + KEYBOARD_TIP);
@@ -185,12 +232,12 @@
     remember(code || 'message');
     if (!dockNote || !dockNoteText) return;
     dockNoteText.textContent = msg;
-    if (dockNoteKeyboard) dockNoteKeyboard.hidden = !(isApple || !Recognition);
+    if (dockNoteKeyboard) dockNoteKeyboard.hidden = false; /* v9: every phone, Android included */
     dockNote.hidden = false;
   }
   function hideDockNote() { if (dockNote) dockNote.hidden = true; }
   function remember(code) {
-    var line = 'Last dictation problem: ' + code + ' at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (standalone ? ' (Home Screen app)' : '') + '.';
+    var line = 'Last dictation problem: ' + code + (code !== 'microphone' && code !== 'message' && Recognition ? ' (language tried: ' + langsTried() + ')' : '') + ' at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (standalone ? ' (installed app)' : '') + (isAndroid ? ' · Android' : isApple ? ' · iPhone/iPad' : '') + '.';
     try { global.localStorage.setItem('twgi-journal-dictation-last', line); } catch (err) {}
     showLast(line);
   }
@@ -206,7 +253,7 @@
     if (recording) return;
     text.readOnly = false;
     try { text.scrollIntoView({ block: 'center' }); } catch (err) {}
-    text.focus(); /* inside the tap, so the iPhone keyboard (with its mic key) opens */
+    text.focus(); /* inside the tap, so the phone keyboard (iPhone mic key, Gboard mic) opens */
     say('Tap the microphone key on your keyboard and speak, or type your note.');
   });
 
@@ -247,12 +294,14 @@
   }
 
   function errorMessage(code) {
-    if (code === 'not-allowed') return 'Speech-to-text was not allowed. When the Journal asks, tap Allow for the microphone and speech recognition. ' + KEYBOARD_TIP;
+    if (code === 'not-allowed') return 'Speech-to-text was not allowed. When the Journal asks, allow the microphone' + (isAndroid ? ' (or in Chrome: the lock icon / site settings, Microphone, Allow). ' : ' and speech recognition. ') + KEYBOARD_TIP;
     if (code === 'service-not-allowed') return isApple
       ? 'Your iPhone did not let the Journal use speech-to-text. Check that Dictation is on (Settings, General, Keyboard, Enable Dictation). ' + KEYBOARD_TIP
-      : 'This browser did not allow speech-to-text here. ' + KEYBOARD_TIP;
+      : isAndroid
+        ? 'Your phone did not let the Journal use speech-to-text. Check that Chrome may use the microphone and that the Google app’s speech service is on. ' + KEYBOARD_TIP
+        : 'This browser did not allow speech-to-text here. ' + KEYBOARD_TIP;
     if (code === 'audio-capture') return 'Speech-to-text could not get the microphone (another app may be using it). ' + KEYBOARD_TIP;
-    if (code === 'language-not-supported') return 'Speech-to-text is not available for your language here. ' + KEYBOARD_TIP;
+    if (code === 'language-not-supported') return 'Speech-to-text on this device would not accept the language (tried ' + langsTried() + '). You can pick another language under Settings, Dictation language. ' + KEYBOARD_TIP;
     if (code === 'network') return 'Speech-to-text needs an internet connection right now. ' + KEYBOARD_TIP;
     if (code === 'start-failed') return 'Speech-to-text would not start. ' + KEYBOARD_TIP;
     return 'Speech-to-text stopped (' + code + '). ' + KEYBOARD_TIP;
@@ -273,10 +322,14 @@
   function newRecognizer() {
     var my = ++gen;
     var r = new Recognition();
-    r.lang = nav.language || 'en-US';
+    var lang = langs[langStep] || '';
+    if (lang) r.lang = lang; /* '' = leave it unset: the browser's own default */
     r.continuous = true;
     r.interimResults = true;
-    if (!isApple && 'processLocally' in r) r.processLocally = true;
+    /* v9: never ask for on-device-only recognition. Chrome with processLocally on
+       rejects languages whose offline pack is not downloaded
+       ("language-not-supported"); false lets it use its normal (cloud) service. */
+    try { if ('processLocally' in r) r.processLocally = false; } catch (err) {}
     r.onaudiostart = function () { if (my === gen) heardAudio = true; };
     r.onsoundstart = r.onspeechstart = function () { if (my === gen) heardAudio = true; };
     r.onresult = function (ev) {
@@ -301,6 +354,15 @@
       if (my !== gen) return;
       var code = (ev && ev.error) || 'unknown';
       if (code === 'no-speech' || code === 'aborted') return;
+      /* v9: the language was refused before any words came: retry once with
+         en-US, then once with no language set, before giving up. */
+      if (code === 'language-not-supported' && !gotWords && !endWaiter && recording && liveOn && langStep < langs.length - 1) {
+        langStep++;
+        gen++; /* the refused recogniser's own end/error events are ignored */
+        try { r.abort(); } catch (err) {}
+        try { sessionStart = Date.now(); recognizer = newRecognizer(); recognizer.start(); return; }
+        catch (err) { recognizer = null; }
+      }
       fatal = code;
       if (endWaiter) return; /* already stopping; stop() reports it */
       try { r.abort(); } catch (err) {}
@@ -341,6 +403,7 @@
     if (!Recognition) return false;
     base = text.value; committed = ''; curFinal = ''; curInterim = '';
     gotWords = false; heardAudio = false; warned = false; fatal = ''; quickEnds = 0;
+    langs = langChain(); langStep = 0;
     try {
       sessionStart = Date.now();
       recognizer = newRecognizer();
@@ -491,7 +554,8 @@
   if (keyboardBtn) keyboardBtn.addEventListener('click', function () {
     if (recording) return;
     text.readOnly = false;
-    text.focus(); /* inside the tap, so the iPhone keyboard opens */
+    try { text.scrollIntoView({ block: 'center' }); } catch (err) {}
+    text.focus(); /* inside the tap, so the phone keyboard (iPhone mic key, Gboard mic) opens */
     say('Tap the microphone key on your keyboard and speak, or type your note.');
   });
 
@@ -544,7 +608,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS };
+  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }

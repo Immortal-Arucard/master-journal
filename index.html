@@ -45,7 +45,7 @@
         <span class="rec-timer" id="pensieve-timer" aria-live="off"></span>
       </div>
       <fieldset class="pensieve-mode" id="pensieve-mode" hidden>
-        <legend>On iPhone and iPad the microphone can do one of these at a time:</legend>
+        <legend>On this phone the microphone can do one of these at a time:</legend>
         <label class="opt"><input type="radio" name="pensieve-mode" value="live" checked> Live text (your words appear as you speak)</label>
         <label class="opt"><input type="radio" name="pensieve-mode" value="audio"> Audio recording only (no live text)</label>
       </fieldset>
@@ -109,16 +109,37 @@
           <label class="opt"><input type="radio" name="dictationOriginals" value="always"> Always save automatically</label>
           <label class="opt"><input type="radio" name="dictationOriginals" value="never"> Never save</label>
         </fieldset>
+        <fieldset>
+          <legend>Dictation language</legend>
+          <p class="note">The language you speak when you dictate. If your phone refuses it, the Journal tries English (US) and then the phone’s default by itself.</p>
+          <label for="dictation-language">Language</label>
+          <select id="dictation-language" name="dictationLanguage">
+            <option value="en-US">English (US)</option>
+            <option value="auto">Automatic (this phone’s language)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="es-US">Español (Estados Unidos)</option>
+            <option value="es-ES">Español (España)</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="pt-BR">Português (Brasil)</option>
+            <option value="it-IT">Italiano</option>
+            <option value="hi-IN">हिन्दी (Hindi)</option>
+            <option value="zh-CN">中文 (普通话)</option>
+            <option value="ja-JP">日本語</option>
+            <option value="ko-KR">한국어</option>
+            <option value="ar-SA">العربية</option>
+          </select>
+        </fieldset>
       </form>
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
       <p class="note">These settings sync to your other devices when you are signed in.</p>
-      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v8</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
+      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v9</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
     </section>
   </section>
 </main>
 <footer class="app-footer">
-  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="8">Journal v8</span></p>
+  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="9">Journal v9</span></p>
   <nav aria-label="Footer">
     <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
     <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>

@@ -1,8 +1,8 @@
 /* Journal service worker. Own cache, separate from the main TWGI site.
    Precaches the app shell so the Journal opens offline. Never caches
    Supabase or other cross-origin requests. */
-var CACHE = 'master-journal-v8';
-var VERSION = '8';
+var CACHE = 'master-journal-v9';
+var VERSION = '9';
 var APP_TITLE = 'Journal';
 var PRECACHE = [
   '/',
@@ -34,7 +34,7 @@ var PRECACHE = [
   '/icons/apple-touch-icon.png'
 ];
 
-/* v8: each file is fetched with ?v=8 (and cache: 'reload') so neither the
+/* v8+: each file is fetched with ?v=<VERSION> (v9: ?v=9) (and cache: 'reload') so neither the
    phone's HTTP cache nor the GitHub Pages CDN can hand an older copy to the
    new version; it is stored under its normal address. */
 function fresh(u) { return u + (u.indexOf('?') < 0 ? '?' : '&') + 'v=' + VERSION; }

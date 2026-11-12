@@ -1,6 +1,7 @@
 /* TWGI master profile settings, per user, saved on this device.
    localStorage key: twgi-settings-v1:<user id>
-   Format: { "v": 1, "journal": { "dictationOriginals": "ask" | "always" | "never" } }
+   Format: { "v": 1, "journal": { "dictationOriginals": "ask" | "always" | "never",
+             "dictationLanguage": "en-US" | "auto" | "es-US" | ... (v9) } }
    The same file and format are used on the main site's /account/ page and in
    the Journal app. v4: in the Journal, assets/journal-sync.js syncs this
    whole object to the owner-only table public.master_settings (newest change
@@ -11,7 +12,9 @@
   var ID_RE = /^[A-Za-z0-9-]{1,64}$/;
   var schema = {
     journal: {
-      dictationOriginals: { values: ['ask', 'always', 'never'], fallback: 'ask' }
+      dictationOriginals: { values: ['ask', 'always', 'never'], fallback: 'ask' },
+      /* v9: speech-to-text language; 'auto' = the phone's own language */
+      dictationLanguage: { values: ['en-US', 'auto', 'en-GB', 'es-US', 'es-ES', 'fr-FR', 'de-DE', 'pt-BR', 'it-IT', 'hi-IN', 'zh-CN', 'ja-JP', 'ko-KR', 'ar-SA'], fallback: 'en-US' }
     }
   };
   var listeners = [];

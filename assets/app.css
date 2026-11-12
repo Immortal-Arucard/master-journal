@@ -126,3 +126,6 @@ body.has-dictation-bar .update-ready{bottom:calc(72px + var(--bar-lift,0px) + en
 .reminder-editor input[type=checkbox]{width:20px;height:20px;min-height:0;padding:0;accent-color:#4fc3ff;flex:none}
 .reminder-editor select,.reminder-editor input[type=number]{font-size:16px;width:100%}
 .reminder-editor .opt{color:#fff;font-size:16px}
+/* v9: Dictation language picker in Settings */
+.settings-form fieldset+fieldset{margin-top:16px}
+.settings-form select{display:block;width:100%;max-width:360px;min-height:44px;margin-top:4px;border-radius:10px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;font-size:16px;padding:0 10px}
