@@ -162,7 +162,7 @@
       del.textContent = 'Delete';
       del.setAttribute('aria-label', 'Delete entry from ' + pretty(entry.entryAt));
       del.addEventListener('click', function () {
-        if (!window.confirm('Delete this journal entry from this device? This cannot be undone.')) return;
+        if (!window.confirm(J.sync.enabled ? 'Delete this journal entry from all your devices? This cannot be undone.' : 'Delete this journal entry from this device? This cannot be undone.')) return;
         J.remove(userId, entry.id);
         if (window.TWGIJournalOriginals) window.TWGIJournalOriginals.remove(userId, entry.id).catch(function () {});
         if (idInput.value === entry.id) resetForm();
@@ -185,7 +185,7 @@
       var editing = !!idInput.value;
       J.save(userId, { id: idInput.value || null, title: titleInput.value, body: bodyInput.value, entryAt: fromLocal(whenInput.value) });
       resetForm();
-      say(editing ? 'Changes saved on this device.' : 'Entry saved on this device.');
+      say(J.sync.enabled ? (editing ? 'Changes saved. They sync to your other devices.' : 'Entry saved. It syncs to your other devices.') : (editing ? 'Changes saved on this device.' : 'Entry saved on this device.'));
       render();
     } catch (err) {
       say(err && err.message ? err.message : 'Could not save on this device.');
@@ -202,9 +202,11 @@
     if (signedIn) {
       resetForm();
       refreshOriginals();
-      J.sync.pull(userId).catch(function () {});
     }
   }
+
+  // v4: entries changed on another device (cloud sync) repaint the list.
+  if (J.onChange) J.onChange(function (id) { if (id && id === userId) render(); });
 
   function wire() { window.TWGIAccount.subscribe(show); }
   if (window.TWGIAccount) wire();

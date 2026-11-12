@@ -80,3 +80,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .push-reminder input[type=time]{min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;font-size:16px;max-width:12rem}
 .push-reminder .take{justify-self:start}
 .push-ios-hint{border-color:#ffd27a}
+
+/* v4: cloud sync status and "Update ready" notice */
+.sync-note { margin-top: -.25rem; }
+.update-ready { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 1000; background: #0b1622; color: #fff; border: 1px solid #4fc3ff; border-radius: 10px; padding: .5rem .75rem; display: flex; gap: .5rem; align-items: center; font-size: .95rem; box-shadow: 0 4px 16px rgba(0,0,0,.4); }

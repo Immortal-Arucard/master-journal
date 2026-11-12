@@ -10,10 +10,12 @@
   }
   form.addEventListener('change', function (e) {
     if (!userId || e.target.name !== 'dictationOriginals') return;
-    try { window.TWGISettings.set(userId, 'journal', 'dictationOriginals', e.target.value); status.textContent = 'Setting saved on this device.'; }
+    try { window.TWGISettings.set(userId, 'journal', 'dictationOriginals', e.target.value); status.textContent = window.TWGISettings.sync.enabled ? 'Setting saved. It syncs to your other devices.' : 'Setting saved on this device.'; }
     catch (err) { status.textContent = err.message; }
   });
   function show(state) { userId = state && state.user && state.user.id ? state.user.id : ''; paint(); }
+  // v4: repaint when a synced copy arrives from another device.
+  window.TWGISettings.onChange(function (id, group) { if (id === userId && group == null) paint(); });
   function wire() { window.TWGIAccount.subscribe(show); }
   if (window.TWGIAccount) wire(); else document.addEventListener('twgi-account-api', wire, { once: true });
 })();

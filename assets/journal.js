@@ -1,7 +1,12 @@
 /* TWGI Journal: a private journal for the signed-in master account.
-   Entries are saved on this device only, in localStorage under
-   twgi-journal-v1:<user id>. Nothing is sent to any server yet.
-   TWGIJournal.sync.pull/push are the hooks a later cloud sync will fill in.
+   The device copy lives in localStorage under twgi-journal-v1:<user id>.
+   v4: assets/journal-sync.js fills TWGIJournal.sync and the entries sync to
+   the owner-only table public.master_journal_entries (newest edit wins per
+   entry; deleted entries stay as tombstones so they cannot come back).
+     sync.stamp(userId, prev, next, info) runs inside every save/delete and
+       returns the list to store (info.deleted lists removed ids).
+     TWGIJournal.applyRemote(userId, entries) stores a merged list from the
+       cloud and tells onChange listeners (the screen repaints).
    Journal entries are never shown on public profiles. */
 (function (global) {
   var PREFIX = 'twgi-journal-v1:';
@@ -63,10 +68,19 @@
     } catch (err) { return []; }
   }
 
-  function write(userId, list) {
+  function write(userId, list, keepAll) {
     var key = storageKey(userId);
     if (!key) throw new Error('Sign in to use the Journal.');
-    global.localStorage.setItem(key, JSON.stringify(sortNewest(list).slice(0, MAX_ENTRIES)));
+    var sorted = sortNewest(list);
+    global.localStorage.setItem(key, JSON.stringify(keepAll ? sorted : sorted.slice(0, MAX_ENTRIES)));
+  }
+
+  var listeners = [];
+  function stamped(userId, prev, next, info) {
+    try {
+      var out = api.sync.stamp ? api.sync.stamp(userId, prev, next, info || {}) : next;
+      return Array.isArray(out) ? out : next;
+    } catch (err) { return next; }
   }
 
   var api = {
@@ -87,19 +101,26 @@
       });
       if (!entry) throw new Error('Write something before saving.');
       if (!existing && list.length >= MAX_ENTRIES) throw new Error('This device has reached the ' + MAX_ENTRIES + '-entry limit.');
-      list = list.filter(function (e) { return e.id !== entry.id; });
-      list.push(entry);
-      write(userId, list);
+      var next = list.filter(function (e) { return e.id !== entry.id; });
+      next.push(entry);
+      write(userId, stamped(userId, list, next), true);
       api.sync.push(userId, read(userId));
       return entry;
     },
     remove: function (userId, id) {
       var list = read(userId);
       var next = list.filter(function (e) { return e.id !== id; });
-      write(userId, next);
+      write(userId, stamped(userId, list, next, { deleted: [id] }), true);
       api.sync.push(userId, next);
       return list.length !== next.length;
     },
+    applyRemote: function (userId, entries) {
+      if (!storageKey(userId) || !Array.isArray(entries)) return false;
+      write(userId, entries.map(clean).filter(Boolean), true);
+      listeners.forEach(function (fn) { try { fn(userId); } catch (err) {} });
+      return true;
+    },
+    onChange: function (fn) { listeners.push(fn); },
     search: function (userId, query) {
       var q = String(query || '').trim().toLowerCase();
       var list = read(userId);
@@ -110,12 +131,11 @@
         return words.every(function (w) { return hay.indexOf(w) !== -1; });
       });
     },
-    /* Cloud sync hooks. Device-only for now: pull resolves to null (nothing
-       from the cloud) and push does nothing. A later release can replace
-       these with calls to an owner-only master_journal_entries table. */
+    /* Cloud sync hooks. Device-only unless assets/journal-sync.js replaces
+       them (signed in). */
     sync: {
       enabled: false,
-      pull: function (userId) { return Promise.resolve(null); },
+      stamp: function (userId, prev, next) { return next; },
       push: function (userId, entries) { return Promise.resolve(false); }
     }
   };

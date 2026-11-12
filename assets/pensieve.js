@@ -178,9 +178,9 @@
     try {
       entry = J.save(userId, { title: titleInput.value, body: text.value, entryAt: new Date(startedAt || Date.now()).toISOString() });
     } catch (err) { say(err && err.message ? err.message : 'Could not save.'); return; }
-    if (!hasOriginal()) { finished('Entry saved on this device.'); return; }
+    if (!hasOriginal()) { finished(J.sync && J.sync.enabled ? 'Entry saved. It syncs to your other devices.' : 'Entry saved on this device.'); return; }
     var pref = S ? S.get(userId, 'journal', 'dictationOriginals') : 'ask';
-    if (pref === 'never') { finished('Entry saved on this device. The original recording was not kept (your setting).'); return; }
+    if (pref === 'never') { finished('Entry saved. The original recording was not kept (your setting).'); return; }
     if (pref === 'always') {
       try { await keepOriginal(entry.id); finished('Entry and original copy saved on this device.'); }
       catch (err) { finished('Entry saved, but the original copy could not be stored on this device.'); }

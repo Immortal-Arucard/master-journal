@@ -2,7 +2,9 @@
    localStorage key: twgi-settings-v1:<user id>
    Format: { "v": 1, "journal": { "dictationOriginals": "ask" | "always" | "never" } }
    The same file and format are used on the main site's /account/ page and in
-   the Journal app. TWGISettings.sync.pull/push are hooks for a later cloud sync.
+   the Journal app. v4: in the Journal, assets/journal-sync.js syncs this
+   whole object to the owner-only table public.master_settings (newest change
+   wins). TWGISettings.applyRemote(userId, value) stores a synced copy.
    Other sections can add their own namespaced groups via TWGISettings.define. */
 (function (global) {
   var PREFIX = 'twgi-settings-v1:';
@@ -57,9 +59,27 @@
       schema[group][name] = { values: values.slice(), fallback: fallback };
     },
     onChange: function (fn) { listeners.push(fn); },
+    read: function (userId) { return readRaw(userId); },
+    applyRemote: function (userId, value) {
+      var k = key(userId);
+      if (!k || !value || typeof value !== 'object' || Array.isArray(value)) return false;
+      var raw = {};
+      Object.keys(value).forEach(function (g) {
+        if (g === 'v') return;
+        if (!value[g] || typeof value[g] !== 'object' || Array.isArray(value[g])) return;
+        raw[g] = {};
+        Object.keys(value[g]).forEach(function (n) {
+          var def = schema[g] && schema[g][n];
+          if (!def || def.values.indexOf(value[g][n]) !== -1) raw[g][n] = value[g][n];
+        });
+      });
+      raw.v = 1;
+      try { global.localStorage.setItem(k, JSON.stringify(raw)); } catch (err) { return false; }
+      listeners.forEach(function (fn) { try { fn(userId, null, null, null); } catch (err) {} });
+      return true;
+    },
     sync: {
       enabled: false,
-      pull: function (userId) { return Promise.resolve(null); },
       push: function (userId, all) { return Promise.resolve(false); }
     }
   };

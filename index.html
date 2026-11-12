@@ -28,10 +28,11 @@
   <p class="eyebrow">TWGI master account</p>
   <h1>Journal</h1>
   <p class="lead">Your private journal. Only you can see it, and it never appears on your public profile.</p>
-  <p class="device-note"><strong>Saved on this device only for now.</strong> Entries stay in this browser on this device. They do not sync to your other devices yet, and clearing this browser's site data erases them.</p>
+  <p class="device-note"><strong>Syncs across your devices.</strong> When you are signed in, your entries and settings are saved to your private TWGI master account and show up on every device where you sign in. They also stay on this device, so the Journal works offline; changes made offline sync when you are back online. Original dictation recordings stay on the device that recorded them.</p>
+  <p class="note sync-note" id="journal-sync" role="status" aria-live="polite" hidden></p>
   <section class="panel" id="journal-signin" aria-labelledby="journal-signin-h">
     <h2 id="journal-signin-h">Sign in to open your Journal</h2>
-    <p class="note">Use your TWGI master account. Each account keeps its own separate journal on this device.</p>
+    <p class="note">Use your TWGI master account. Each account keeps its own separate, private journal.</p>
     <a class="take" href="/login/">Sign in</a>
   </section>
   <section class="journal" id="journal" hidden aria-label="Your journal">
@@ -100,7 +101,7 @@
       </form>
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
-      <p class="note">This app keeps its own copy of your master profile settings on this device. Your account page on the main site has the same setting.</p>
+      <p class="note">These settings sync to your other devices when you are signed in.</p>
     </section>
   </section>
 </main>
@@ -113,6 +114,7 @@
     <a href="https://theworldgovernmentincorporated.com/privacy.html">Privacy</a>
   </nav>
 </footer>
+<script src="/assets/auto-update.js"></script>
 <script src="/assets/app.js"></script>
 <script src="/vendor/supabase.js"></script>
 <script src="/assets/auth.js"></script>
@@ -120,6 +122,8 @@
 <script src="/assets/originals.js"></script>
 <script src="/assets/journal.js"></script>
 <script src="/assets/journal-ui.js"></script>
+<script src="/assets/cloud-sync.js"></script>
+<script src="/assets/journal-sync.js"></script>
 <script src="/assets/pensieve.js"></script>
 <script src="/assets/settings-ui.js"></script>
 <script src="/assets/push-core.js"></script>
