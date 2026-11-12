@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v14`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v15`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -169,3 +169,21 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - Version label "Journal v14", cache `master-journal-v14`, precache with `?v=14`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
   No SQL, no Worker change.
+
+## v15 — Dictation duration on note cards
+- Each note card shows the original dictation's duration, tiny and muted, in the upper
+  right corner (for example "1:42", or "1:02:03" past an hour), whether or not the
+  user kept the audio. Typed notes with no dictation show nothing. Older notes that
+  never stored a duration use the length of a saved original recording when one is
+  still on the device; otherwise they show nothing.
+- The time is the total the microphone was actually recording for that note, summed
+  across start/stop sessions. The title-field microphone is not included.
+- Stored on the entry as `dictationMs` and synced inside the existing `reminder`
+  JSON column (key `dictationMs`) so it travels across devices with no new SQL.
+  A duration-only payload is not treated as a reminder. If that column were off,
+  the duration would stay on the device (same pattern as early reminders).
+- Accessible name: "Dictated for 1 min 42 s".
+- Version label "Journal v15", cache `master-journal-v15`, precache with `?v=15`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/journal.js`,
+  `assets/journal-sync.js`, `assets/journal-ui.js`, `assets/pensieve.js`,
+  `assets/originals.js`, `README.md`. No SQL, no Worker change.

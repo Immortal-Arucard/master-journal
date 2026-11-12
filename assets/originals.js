@@ -59,6 +59,16 @@
       return tx('readonly', function (s) { return s.index('byUser').getAllKeys(String(userId)); })
         .then(function (keys) { return (keys || []).map(function (k) { return k[1]; }); });
     },
+    /* v15: ids plus stored duration and whether audio is present, so older
+       notes without entry.dictationMs can still show a time on the card. */
+    listMeta: function (userId) {
+      return tx('readonly', function (s) { return s.index('byUser').getAll(String(userId)); })
+        .then(function (rows) {
+          return (rows || []).map(function (r) {
+            return { id: r.entryId, durationMs: Number(r.durationMs) || 0, hasAudio: !!r.audio };
+          });
+        });
+    },
     remove: function (userId, entryId) {
       return tx('readwrite', function (s) { return s.delete([String(userId), String(entryId)]); })
         .then(function () { return true; });

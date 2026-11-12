@@ -70,8 +70,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .jform .row{display:flex;flex-wrap:wrap;gap:8px}
 .jform .take{margin-top:0}
 .entries{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:12px}
-.entry article{padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}
-.entry-when{color:var(--sky);font-size:13px;letter-spacing:.04em}
+.entry article{position:relative;padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}
+.entry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px 12px}
+.entry-when{color:var(--sky);font-size:13px;letter-spacing:.04em;min-width:0;flex:1 1 auto}
+.entry-dictation{flex:none;margin:0;margin-left:auto;padding:0;font-size:11px;line-height:1.2;color:var(--mute);opacity:.55;font-variant-numeric:tabular-nums;letter-spacing:.02em;white-space:nowrap;align-self:flex-start}
 .entry-title{margin:6px 0 0;font-size:20px;font-weight:600;overflow-wrap:anywhere}
 .entry-body{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;color:#e8e8e8}
 .entry-actions{display:flex;gap:8px;margin-top:10px}

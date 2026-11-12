@@ -12,6 +12,13 @@
      save(userId, { ..., reminder }) sets it (null removes it; leaving the
        key out keeps the current one).
      setReminder(userId, id, reminder|null) changes only the reminder.
+   v15: an entry may carry dictationMs (total milliseconds the mic was
+   recording for that note, not including the title-field mic). It is stored
+   on the entry and, in assets/journal-sync.js, packed into the existing
+   reminder JSON column so it syncs without a new SQL column. A duration-only
+   payload is not a reminder.
+     save(userId, { ..., dictationMs }) sets it (leaving the key out keeps
+       the current one; 0 or a missing value stores nothing — no "0:00").
    Journal entries are never shown on public profiles. */
 (function (global) {
   var PREFIX = 'twgi-journal-v1:';
@@ -35,6 +42,46 @@
     return isNaN(d.getTime()) ? '' : d.toISOString();
   }
 
+  /* Positive finite duration only. Nothing is stored for typed notes. */
+  function durationMs(value) {
+    var n = Math.round(Number(value));
+    if (!isFinite(n) || n <= 0) return 0;
+    if (n > 7 * 24 * 3600000) n = 7 * 24 * 3600000;
+    return n;
+  }
+
+  /* short: "1:42" or "1:02:03"; label: "Dictated for 1 min 42 s". null if none. */
+  function formatDictation(ms) {
+    ms = durationMs(ms);
+    if (!ms) return null;
+    var s = Math.round(ms / 1000);
+    if (s < 1) s = 1;
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var short = h ? (h + ':' + pad(m) + ':' + pad(sec)) : (m + ':' + pad(sec));
+    var parts = [];
+    if (h) parts.push(h + (h === 1 ? ' hr' : ' hr'));
+    if (m) parts.push(m + ' min');
+    if (sec || !parts.length) parts.push(sec + ' s');
+    return { short: short, label: 'Dictated for ' + parts.join(' ') };
+  }
+
+  function pickDuration(entry) {
+    var n = durationMs(entry && entry.dictationMs);
+    if (n) return n;
+    return durationMs(entry && entry.reminder && entry.reminder.dictationMs);
+  }
+
+  function reminderWithoutDuration(raw) {
+    if (!raw || typeof raw !== 'object') return raw || null;
+    if (!('dictationMs' in raw)) return raw;
+    var rest = {};
+    Object.keys(raw).forEach(function (k) { if (k !== 'dictationMs') rest[k] = raw[k]; });
+    return Object.keys(rest).length ? rest : null;
+  }
+
   function newId() {
     if (global.crypto && global.crypto.randomUUID) return global.crypto.randomUUID();
     return 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -55,8 +102,10 @@
       updatedAt: validDate(entry.updatedAt) || now
     };
     var R = global.TWGIReminders;
-    var reminder = entry.reminder && R ? R.clean(entry.reminder) : null;
+    var reminder = reminderWithoutDuration(entry.reminder) && R ? R.clean(reminderWithoutDuration(entry.reminder)) : null;
     if (reminder) out.reminder = reminder;
+    var ms = pickDuration(entry);
+    if (ms) out.dictationMs = ms;
     return out;
   }
 
@@ -95,6 +144,8 @@
   var api = {
     storageKey: storageKey,
     limits: { title: MAX_TITLE, body: MAX_BODY, entries: MAX_ENTRIES },
+    durationMs: durationMs,
+    formatDictation: formatDictation,
     list: function (userId) { return read(userId); },
     save: function (userId, input) {
       var list = read(userId);
@@ -107,7 +158,8 @@
         entryAt: (input && input.entryAt) || (existing && existing.entryAt) || now,
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
-        reminder: input && 'reminder' in input ? input.reminder : (existing && existing.reminder) || null
+        reminder: input && 'reminder' in input ? input.reminder : (existing && existing.reminder) || null,
+        dictationMs: input && 'dictationMs' in input ? input.dictationMs : (existing && existing.dictationMs)
       });
       if (!entry) throw new Error('Write something before saving.');
       if (!existing && list.length >= MAX_ENTRIES) throw new Error('This device has reached the ' + MAX_ENTRIES + '-entry limit.');
@@ -134,17 +186,20 @@
     },
     applyRemote: function (userId, entries) {
       if (!storageKey(userId) || !Array.isArray(entries)) return false;
-      // v6: a cloud copy without the reminder field (column not switched on
-      // yet, or an older app) keeps this device's reminder.
+      // v6/v15: a cloud copy without the reminder field or without
+      // dictationMs (column not switched on yet, or an older app) keeps
+      // this device's reminder and duration.
       var local = {};
       read(userId).forEach(function (e) { local[e.id] = e; });
       entries = entries.map(function (e) {
-        if (e && e.reminder === undefined && local[e.id] && local[e.id].reminder) {
-          var copy = {}; Object.keys(e).forEach(function (k) { copy[k] = e[k]; });
-          copy.reminder = local[e.id].reminder;
-          return copy;
-        }
-        return e;
+        if (!e || !local[e.id]) return e;
+        var keepRem = e.reminder === undefined && local[e.id].reminder;
+        var keepDur = e.dictationMs === undefined && local[e.id].dictationMs;
+        if (!keepRem && !keepDur) return e;
+        var copy = {}; Object.keys(e).forEach(function (k) { copy[k] = e[k]; });
+        if (keepRem) copy.reminder = local[e.id].reminder;
+        if (keepDur) copy.dictationMs = local[e.id].dictationMs;
+        return copy;
       });
       write(userId, entries.map(clean).filter(Boolean), true);
       listeners.forEach(function (fn) { try { fn(userId); } catch (err) {} });

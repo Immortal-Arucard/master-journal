@@ -69,7 +69,53 @@
   function editorChanged() { document.dispatchEvent(new CustomEvent('twgi-journal-editor')); }
 
   var originalIds = {};
+  var originalDurations = {};
   var urls = [];
+
+  function probeAudioMs(blob) {
+    return new Promise(function (resolve) {
+      if (!blob) { resolve(0); return; }
+      var url, audio, done = false;
+      var finish = function (ms) {
+        if (done) return;
+        done = true;
+        try { if (url) URL.revokeObjectURL(url); } catch (err) {}
+        resolve(ms || 0);
+      };
+      try {
+        url = URL.createObjectURL(blob);
+        audio = document.createElement('audio');
+        audio.preload = 'metadata';
+        audio.onloadedmetadata = function () {
+          var d = audio.duration;
+          finish(isFinite(d) && d > 0 ? Math.round(d * 1000) : 0);
+        };
+        audio.onerror = function () { finish(0); };
+        setTimeout(function () { finish(0); }, 2000);
+        audio.src = url;
+      } catch (err) { finish(0); }
+    });
+  }
+
+  function cardDictationMs(entry) {
+    var n = window.TWGIJournal && window.TWGIJournal.durationMs
+      ? window.TWGIJournal.durationMs(entry && entry.dictationMs)
+      : (Number(entry && entry.dictationMs) || 0);
+    if (n) return n;
+    return Number(originalDurations[entry && entry.id]) || 0;
+  }
+
+  function dictationNode(entry) {
+    var J = window.TWGIJournal;
+    var fmt = J && J.formatDictation ? J.formatDictation(cardDictationMs(entry)) : null;
+    if (!fmt) return null;
+    var el = document.createElement('span');
+    el.className = 'entry-dictation';
+    el.textContent = fmt.short;
+    el.setAttribute('title', fmt.label);
+    el.setAttribute('aria-label', fmt.label);
+    return el;
+  }
 
   function originalNode(entry) {
     var box = document.createElement('details');
@@ -120,12 +166,31 @@
   }
 
   function refreshOriginals() {
-    if (!window.TWGIJournalOriginals || !userId) { originalIds = {}; render(); return; }
-    window.TWGIJournalOriginals.listIds(userId).then(function (ids) {
+    if (!window.TWGIJournalOriginals || !userId) { originalIds = {}; originalDurations = {}; render(); return; }
+    var O = window.TWGIJournalOriginals;
+    var listP = O.listMeta
+      ? O.listMeta(userId)
+      : O.listIds(userId).then(function (ids) { return (ids || []).map(function (id) { return { id: id, durationMs: 0, hasAudio: false }; }); });
+    listP.then(function (rows) {
       originalIds = {};
-      ids.forEach(function (id) { originalIds[id] = true; });
+      originalDurations = {};
+      var missing = [];
+      (rows || []).forEach(function (r) {
+        var id = r && r.id;
+        if (!id) return;
+        originalIds[id] = true;
+        if (r.durationMs > 0) originalDurations[id] = r.durationMs;
+        else if (r.hasAudio) missing.push(id);
+      });
       render();
-    }).catch(function () { originalIds = {}; render(); });
+      if (!missing.length || !O.get) return;
+      Promise.all(missing.map(function (id) {
+        return O.get(userId, id).then(function (rec) {
+          if (!rec || !rec.audio) return;
+          return probeAudioMs(rec.audio).then(function (ms) { if (ms) originalDurations[id] = ms; });
+        });
+      })).then(function () { if (missing.some(function (id) { return originalDurations[id]; })) render(); }).catch(function () {});
+    }).catch(function () { originalIds = {}; originalDurations = {}; render(); });
   }
   document.addEventListener('twgi-journal-changed', function () { refreshOriginals(); });
 
@@ -157,11 +222,16 @@
       var li = document.createElement('li');
       li.className = 'entry';
       var art = document.createElement('article');
+      var head = document.createElement('div');
+      head.className = 'entry-head';
       var time = document.createElement('time');
       time.className = 'entry-when';
       time.dateTime = entry.entryAt;
       time.textContent = pretty(entry.entryAt);
-      art.appendChild(time);
+      head.appendChild(time);
+      var dur = dictationNode(entry);
+      if (dur) head.appendChild(dur);
+      art.appendChild(head);
       if (entry.title) {
         var h = document.createElement('h3');
         h.className = 'entry-title';

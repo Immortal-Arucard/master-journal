@@ -177,7 +177,7 @@
   var userId = '';
   var recording = false;
   var stream = null, recorder = null, chunks = [], recognizer = null;
-  var rawTranscript = '', startedAt = 0, durationMs = 0, audioBlob = null, tick = null;
+  var rawTranscript = '', startedAt = 0, durationMs = 0, dictationTotalMs = 0, sessionOpen = false, audioBlob = null, tick = null;
   var pendingEntryId = '';
   var savedEntryId = ''; /* v6: asks "Add a reminder?" after saving */
   /* live text state */
@@ -637,11 +637,14 @@
     say('');
     hideDockNote();
     audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; liveOn = false;
+    /* v15: do not zero dictationTotalMs here — later start/stop sessions on
+       the same unsaved note add up. Title-mic uses separate state. */
     if (!isApple) hideHelp();
     var m = mode();
     var wantLive = !!Recognition && m === 'live';
     var wantAudio = canRecord && (!oneMicJob || !wantLive);
     startedAt = Date.now();
+    sessionOpen = true;
     var live = wantLive && startRecognition();
     if (wantLive && !live && !wantAudio && canRecord) wantAudio = true; /* fall back to a recording */
     if (!live && !wantAudio) { say(errorMessage('start-failed')); showHelp(errorMessage('start-failed')); showDockNote(errorMessage('start-failed'), 'start-failed'); return; }
@@ -664,7 +667,11 @@
     return new Promise(function (resolve) {
       clearInterval(tick);
       clearTimeout(watchdog); watchdog = null;
-      durationMs = Date.now() - startedAt;
+      if (sessionOpen) {
+        durationMs = Math.max(0, Date.now() - startedAt);
+        if (durationMs > 0) dictationTotalMs += durationMs;
+        sessionOpen = false;
+      }
       var r = recognizer; recognizer = null;
       var usedLive = liveOn;
       liveOn = false;
@@ -706,7 +713,7 @@
   function reset() {
     if (titleListening) stopTitle({ silent: true });
     text.value = ''; titleInput.value = ''; interim.textContent = '';
-    audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; pendingEntryId = '';
+    audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; dictationTotalMs = 0; sessionOpen = false; pendingEntryId = '';
     base = ''; committed = ''; curFinal = ''; curInterim = '';
     timer.textContent = '';
     choice.hidden = true;
@@ -929,7 +936,9 @@
     closeLive(true); /* v10 */
     var entry;
     try {
-      entry = J.save(userId, { title: titleInput.value, body: text.value, entryAt: new Date(startedAt || Date.now()).toISOString() });
+      var payload = { title: titleInput.value, body: text.value, entryAt: new Date(startedAt || Date.now()).toISOString() };
+      if (dictationTotalMs > 0) payload.dictationMs = dictationTotalMs;
+      entry = J.save(userId, payload);
     } catch (err) { say(err && err.message ? err.message : 'Could not save.'); return; }
     savedEntryId = entry.id;
     if (!hasOriginal()) { finished(J.sync && J.sync.enabled ? 'Entry saved. It syncs to your other devices.' : 'Entry saved on this device.'); return; }
@@ -976,7 +985,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, sizePensieveFold: sizePensieveFold, dock: dock, NO_WORDS_MS: NO_WORDS_MS, TITLE_SILENCE_MS: TITLE_SILENCE_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive, titleListening: function () { return titleListening; } };
+  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, sizePensieveFold: sizePensieveFold, dock: dock, NO_WORDS_MS: NO_WORDS_MS, TITLE_SILENCE_MS: TITLE_SILENCE_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive, titleListening: function () { return titleListening; }, dictationTotalMs: function () { return dictationTotalMs; }, durationMs: function () { return durationMs; }, sessionOpen: function () { return sessionOpen; } };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }
