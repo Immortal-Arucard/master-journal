@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v10`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v11`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -109,3 +109,13 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - Version label "Journal v10", cache `master-journal-v10`, precache with `?v=10`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
   No SQL, no Worker change.
+
+## v11 — Sync card moved to the bottom of the home page
+- The "Syncs across your devices." explanation card (dashed border) and the "Synced across your devices."
+  status line sat just under the Journal heading and intro, above the Pensieve, taking the best space
+  on the phone screen for fine print.
+- Both now sit at the bottom of the home page: after the Pensieve, entries and notes, and Settings,
+  just above the footer. The card's text and behaviour are unchanged.
+- The status line has a little space under the card (it previously hugged the bottom edge).
+- Version label "Journal v11", cache `master-journal-v11`, precache with `?v=11`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `README.md`. No SQL, no Worker change.
