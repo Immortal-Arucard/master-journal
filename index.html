@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Journal — The World Government, Inc.</title>
 <meta name="description" content="A private journal for your TWGI master account.">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -44,6 +44,11 @@
         <button class="take" type="button" id="pensieve-toggle" aria-pressed="false">Start dictation</button>
         <span class="rec-timer" id="pensieve-timer" aria-live="off"></span>
       </div>
+      <fieldset class="pensieve-mode" id="pensieve-mode" hidden>
+        <legend>On iPhone and iPad the microphone can do one of these at a time:</legend>
+        <label class="opt"><input type="radio" name="pensieve-mode" value="live" checked> Live text (your words appear as you speak)</label>
+        <label class="opt"><input type="radio" name="pensieve-mode" value="audio"> Audio recording only (no live text)</label>
+      </fieldset>
       <p class="note" id="pensieve-status" role="status" aria-live="polite"></p>
       <div class="jform">
         <label for="pensieve-title">Title (optional)</label>
@@ -51,6 +56,12 @@
         <label for="pensieve-text">Transcript (you can edit it)</label>
         <textarea id="pensieve-text" maxlength="20000"></textarea>
         <p class="interim" id="pensieve-interim" aria-live="polite"></p>
+        <div class="flag" id="pensieve-help" hidden>
+          <p style="margin:0" id="pensieve-help-text">If no words appear, use your keyboard's microphone instead: tap the Transcript box, then tap the microphone key on the keyboard and speak.</p>
+          <div class="actions">
+            <button class="take ghost" type="button" id="pensieve-keyboard">Type or use keyboard microphone</button>
+          </div>
+        </div>
         <div class="row">
           <button class="take" type="button" id="pensieve-save">Save as journal entry</button>
           <button class="take ghost" type="button" id="pensieve-discard">Discard</button>

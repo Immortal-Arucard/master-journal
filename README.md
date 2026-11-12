@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v4`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v5`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -14,5 +14,13 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   working and says sync is not switched on yet. Original dictation copies stay on the recording device.
 - Auto-update (v4, `assets/auto-update.js`): checks for a new version on open / return to screen and
   reloads once when it takes over (no loops; waits while typing or dictating).
-- Pensieve: voice dictation (Web Speech API + MediaRecorder). Original copies (audio + raw transcript) are kept in IndexedDB `twgi-journal-originals`, per the setting in localStorage `twgi-settings-v1:<user id>` (journal.dictationOriginals: ask | always | never).
+- Pensieve: voice dictation (Web Speech API + MediaRecorder).
+  v5 iPhone fix: on iPhone/iPad (all iOS browsers, incl. the Home Screen app) the mic does ONE job per
+  dictation — live text (default) or audio recording only — because iOS cannot run speech recognition
+  and a recording at once (v4 opened the recording first, so recognition heard silence: empty box, no
+  error). Recognition starts inside the tap, interim words go straight into the Transcript box and are
+  kept on Stop, a fresh recogniser per session, and every failure (blocked, Dictation off, no mic, no
+  words after 8 s) shows a plain message plus the keyboard-microphone fallback. The Start/Stop button is
+  a full-width bar fixed to the bottom of the home screen (safe-area aware, hidden while editing an
+  entry or typing, always shown while recording). Original copies (audio + raw transcript) are kept in IndexedDB `twgi-journal-originals`, per the setting in localStorage `twgi-settings-v1:<user id>` (journal.dictationOriginals: ask | always | never).
 - `supabase/master_journal.sql` was the first PROPOSED design. It is superseded by `supabase/master_journal_sync.sql`; do NOT apply the old file.

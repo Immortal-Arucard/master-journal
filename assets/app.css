@@ -64,6 +64,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .pensieve.is-recording{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b inset}
 .pensieve.is-recording #pensieve-toggle{background:#ff6b6b;border-color:#ff6b6b}
 .rec-timer{align-self:center;color:var(--mute);font-variant-numeric:tabular-nums}
+.pensieve-mode{border:0;margin:8px 0 0;padding:0;min-width:0}
+.pensieve-mode legend{font-size:14px;color:var(--mute);margin-bottom:2px}
+#pensieve-help{margin-top:8px}
 .interim{margin:0;min-height:1.4em;color:var(--mute);font-style:italic;overflow-wrap:anywhere}
 .original{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .original summary{cursor:pointer;color:var(--sky);min-height:44px;display:flex;align-items:center}
@@ -84,3 +87,11 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 /* v4: cloud sync status and "Update ready" notice */
 .sync-note { margin-top: -.25rem; }
 .update-ready { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 1000; background: #0b1622; color: #fff; border: 1px solid #4fc3ff; border-radius: 10px; padding: .5rem .75rem; display: flex; gap: .5rem; align-items: center; font-size: .95rem; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+
+/* v5: Start/Stop dictation is a full-width bar fixed to the bottom of the
+   home screen, flush with the edge but above the iPhone home indicator. */
+body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+body.has-dictation-bar{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+#pensieve-toggle.dictation-bar{position:fixed;left:0;right:0;bottom:0;z-index:900;width:100%;margin:0;border-radius:0;border:0;border-top:1px solid var(--sky);min-height:calc(60px + env(safe-area-inset-bottom,0px));padding:0 calc(16px + env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) calc(16px + env(safe-area-inset-left,0px));font-size:18px;box-shadow:0 -6px 18px rgba(0,0,0,.45)}
+.pensieve.is-recording #pensieve-toggle.dictation-bar{background:#ff6b6b;border-top-color:#ff6b6b;color:#000}
+body.has-dictation-bar .update-ready{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
