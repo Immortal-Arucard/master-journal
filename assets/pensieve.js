@@ -34,7 +34,18 @@
    (Settings > Dictation language, default English (US)), and on
    "language-not-supported" retries once with en-US and once with no language
    before showing a message. Android also gets the one-mic-job rule (Chrome's
-   recogniser and a recording cannot reliably share the microphone there). */
+   recogniser and a recording cannot reliably share the microphone there).
+
+   v10 (live transcript panel). While dictating, the words show in a panel
+   fixed right above the Stop bar, inside the same body-level dock, so they can
+   be read without scrolling down to the Pensieve card. Final words are white,
+   words still being recognised are lighter and italic. The panel only mirrors
+   the card's Transcript box, which stays the one source of truth (that is
+   what Save uses, so nothing is ever saved twice). In audio-only mode it shows
+   "Recording audio" and the timer. When dictation stops it briefly says
+   "Saved to transcript" with a Review & edit button, then fades away. A
+   problem message replaces it (never covered), and the bar keeps its own
+   v8 touch handling. */
 (function (global) {
   var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
@@ -74,6 +85,17 @@
   var dockNoteKeyboard = document.getElementById('dictation-note-keyboard');
   var dockNoteClose = document.getElementById('dictation-note-close');
   var lastIssue = document.getElementById('dictation-last');
+  /* v10: live transcript panel in the dock */
+  var livePanel = document.getElementById('dictation-live');
+  var liveLabel = document.getElementById('dictation-live-label');
+  var liveTimer = document.getElementById('dictation-live-timer');
+  var liveScroll = document.getElementById('dictation-live-scroll');
+  var liveFinal = document.getElementById('dictation-live-final');
+  var liveInterim = document.getElementById('dictation-live-interim');
+  var liveHint = document.getElementById('dictation-live-hint');
+  var liveActions = document.getElementById('dictation-live-actions');
+  var liveReview = document.getElementById('dictation-live-review');
+  var liveClose = document.getElementById('dictation-live-close');
 
   var Recognition = global.SpeechRecognition || global.webkitSpeechRecognition || null;
   var canRecord = !!(nav.mediaDevices && nav.mediaDevices.getUserMedia && global.MediaRecorder);
@@ -89,6 +111,8 @@
   var cfg = global.TWGIPensieveConfig || {}; /* tests only */
   var NO_WORDS_MS = cfg.noWordsMs || 8000;
   var STOP_WAIT_MS = cfg.stopWaitMs || 1500;
+  var LIVE_SAVED_MS = cfg.liveSavedMs || 2600; /* v10: how long "Saved to transcript" stays */
+  var LIVE_FADE_MS = cfg.liveFadeMs || 350;
   var KEYBOARD_TIP = 'Tap the Transcript box, then tap the microphone key on your keyboard (on Android, the mic on Gboard) and speak. That works even when live speech-to-text does not.';
 
   /* ----- v9: dictation language ----- */
@@ -163,6 +187,7 @@
   function paint() {
     text.value = glue(base, spoken());
     interim.textContent = curInterim ? 'Hearing: ' + curInterim : '';
+    renderLive();
   }
   function commitSession() {
     committed = joinPieces([committed, curFinal, curInterim]);
@@ -171,6 +196,98 @@
     paint();
     interim.textContent = '';
   }
+
+  /* ----- v10: live transcript panel (display only; the Transcript box is saved) ----- */
+  var liveKind = '', liveHintText = '', livePinned = true, liveCloseT = null, liveFadeT = null;
+  /* This dictation's words, split into final and still-being-recognised parts.
+     final + interim is exactly what was added to the Transcript box. */
+  function liveWords() {
+    var all = spoken();
+    var fin = joinPieces([committed, curFinal]);
+    if (!fin || all.toLowerCase().indexOf(fin.toLowerCase()) !== 0) return { final: curInterim ? '' : all, interim: curInterim ? all : '' };
+    return { final: fin, interim: all.slice(fin.length) };
+  }
+  function sizeLive() {
+    var h = (vv && vv.height) || global.innerHeight || 0;
+    if (h) document.documentElement.style.setProperty('--live-max', Math.round(h * 0.38) + 'px');
+    if (dock && !dock.hidden) document.documentElement.style.setProperty('--dock-h', (dock.offsetHeight || 0) + 'px');
+  }
+  function openLive(kind, hint) {
+    if (!livePanel) return;
+    clearTimeout(liveCloseT); clearTimeout(liveFadeT); liveCloseT = liveFadeT = null;
+    liveKind = kind; liveHintText = hint || '';
+    livePanel.classList.remove('is-closing', 'is-saved', 'is-finishing');
+    livePanel.classList.toggle('is-audio', kind === 'audio');
+    if (liveActions) liveActions.hidden = true;
+    livePinned = true;
+    livePanel.hidden = false;
+    renderLive();
+  }
+  function setLiveHint(hint) { liveHintText = hint || ''; renderLive(); }
+  function renderLive() {
+    if (!livePanel || livePanel.hidden || !liveKind) return;
+    var fin = '', inter = '', hint = liveHintText;
+    if (liveKind === 'audio') {
+      if (liveLabel) liveLabel.textContent = recording ? 'Recording audio…' : 'Recording saved';
+      if (!hint) hint = 'Audio only, no live text. Type your note in the Transcript box when you stop.';
+      if (liveFinal) liveFinal.textContent = '';
+      if (liveInterim) liveInterim.textContent = '';
+    } else {
+      var w = liveKind === 'saved' ? { final: joinPieces([committed]), interim: '' } : liveWords();
+      fin = w.final; inter = w.interim;
+      if (liveKind === 'live' && liveLabel) liveLabel.textContent = 'Listening…';
+      if (liveKind !== 'saved' && (fin || inter)) hint = '';
+      else if (!hint && !fin && !inter) hint = 'Speak now. Your words will appear here.';
+      if (liveFinal) liveFinal.textContent = fin;
+      if (liveInterim) liveInterim.textContent = inter ? (fin && /^\s/.test(inter) ? ' ' : '') + inter.replace(/^\s+/, '') : '';
+    }
+    if (liveHint) liveHint.textContent = hint ? ((fin || inter) ? '\n' : '') + hint : '';
+    if (liveTimer) liveTimer.textContent = startedAt ? fmt(recording ? Date.now() - startedAt : durationMs) : '';
+    if (livePinned && liveScroll) liveScroll.scrollTop = liveScroll.scrollHeight;
+    sizeLive();
+  }
+  /* After Stop, while the last words are still arriving. */
+  function finishingLive() {
+    if (!livePanel || livePanel.hidden || !liveKind) return;
+    livePanel.classList.add('is-finishing');
+    if (liveLabel) liveLabel.textContent = liveKind === 'audio' ? 'Saving recording…' : 'Finishing…';
+  }
+  /* Dictation ended well: say so briefly, offer Review & edit, then fade away. */
+  function savedLive(gotText) {
+    if (!livePanel || livePanel.hidden || !liveKind) return;
+    var wasAudio = liveKind === 'audio';
+    liveKind = wasAudio ? 'audio' : 'saved';
+    livePanel.classList.remove('is-finishing');
+    livePanel.classList.add('is-saved');
+    liveHintText = wasAudio ? 'Type your note in the Transcript box, then save it.' : (gotText ? 'Review and edit it in the Transcript box, then save it.' : 'No words this time.');
+    renderLive();
+    if (liveLabel) liveLabel.textContent = wasAudio ? 'Recording saved' : gotText ? 'Saved to transcript' : 'Dictation stopped';
+    if (liveActions) liveActions.hidden = false;
+    if (livePinned && liveScroll) liveScroll.scrollTop = liveScroll.scrollHeight; /* buttons took space: keep the last words in view */
+    sizeLive();
+    clearTimeout(liveCloseT);
+    liveCloseT = setTimeout(function () { closeLive(); }, LIVE_SAVED_MS);
+  }
+  function closeLive(now) {
+    clearTimeout(liveCloseT); clearTimeout(liveFadeT); liveCloseT = liveFadeT = null;
+    if (!livePanel || livePanel.hidden) { liveKind = ''; return; }
+    function gone() { livePanel.hidden = true; livePanel.classList.remove('is-closing', 'is-saved', 'is-finishing', 'is-audio'); liveKind = ''; liveFadeT = null; sizeLive(); }
+    if (now) { gone(); return; }
+    livePanel.classList.add('is-closing');
+    liveFadeT = setTimeout(gone, LIVE_FADE_MS);
+  }
+  if (liveScroll) liveScroll.addEventListener('scroll', function () {
+    livePinned = liveScroll.scrollHeight - liveScroll.scrollTop - liveScroll.clientHeight < 24;
+  }, { passive: true });
+  /* Touching the "saved" panel keeps it open until Review & edit or OK. */
+  if (livePanel) livePanel.addEventListener('pointerdown', function () {
+    if (!recording && liveCloseT) { clearTimeout(liveCloseT); liveCloseT = null; }
+  });
+  if (liveClose) liveClose.addEventListener('click', function () { closeLive(); });
+  if (liveReview) liveReview.addEventListener('click', function () {
+    closeLive(true);
+    try { text.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (err) { try { text.scrollIntoView(); } catch (e) {} }
+  });
 
   function describeSupport() {
     var bits = [];
@@ -225,11 +342,13 @@
       if (toggle.parentNode !== homeRow) homeRow.insertBefore(toggle, homeNext && homeNext.parentNode === homeRow ? homeNext : null);
       dock.hidden = true;
       hideDockNote();
+      if (!recording) closeLive(true);
     }
   }
   /* v8: problems are shown right above the bar (the card may be off screen). */
   function showDockNote(msg, code) {
     remember(code || 'message');
+    closeLive(true); /* v10: the message takes the panel's place, never under it */
     if (!dockNote || !dockNoteText) return;
     dockNoteText.textContent = msg;
     if (dockNoteKeyboard) dockNoteKeyboard.hidden = false; /* v9: every phone, Android included */
@@ -268,6 +387,7 @@
       if (covered > 1 && covered < global.innerHeight / 3) lift = Math.round(covered);
     }
     document.documentElement.style.setProperty('--bar-lift', lift + 'px');
+    sizeLive(); /* v10: the panel's max height follows the visible area */
     return lift;
   }
   if (vv && vv.addEventListener) { vv.addEventListener('resize', liftBar); vv.addEventListener('scroll', liftBar); }
@@ -314,6 +434,7 @@
     var msg = heardAudio
       ? 'No words yet. Keep speaking, or if they still don’t appear, tap Stop. '
       : 'The Journal is not hearing you. Tap Stop. ';
+    setLiveHint(heardAudio ? 'No words yet. Keep speaking, or tap Stop.' : 'The Journal is not hearing you. Tap Stop.');
     msg += KEYBOARD_TIP + (isApple ? ' If this keeps happening, close the Journal app fully and open it again.' : '');
     say(msg);
     showHelp(msg);
@@ -345,7 +466,7 @@
       curInterim = joinPieces(live);
       if (curFinal || curInterim) {
         gotWords = true; heardAudio = true; quickEnds = 0;
-        if (warned) { warned = false; say('Listening… your words appear in the Transcript box.'); if (!isApple) hideHelp(); }
+        if (warned) { warned = false; liveHintText = ''; say('Listening… your words appear above the Stop bar and in the Transcript box.'); if (!isApple) hideHelp(); }
       }
       rawTranscript = spoken();
       paint();
@@ -391,6 +512,7 @@
     var msg = errorMessage(code);
     if (recorder && recorder.state !== 'inactive') {
       say(msg.replace(KEYBOARD_TIP, '') + 'Audio is still recording; type your note when you stop.');
+      openLive('audio', 'Live text stopped, but audio is still recording. Type your note when you stop.');
       text.readOnly = false;
       showHelp('Tip: ' + KEYBOARD_TIP);
       return;
@@ -448,9 +570,10 @@
     if (wantLive && !live && !wantAudio && canRecord) wantAudio = true; /* fall back to a recording */
     if (!live && !wantAudio) { say(errorMessage('start-failed')); showHelp(errorMessage('start-failed')); showDockNote(errorMessage('start-failed'), 'start-failed'); return; }
     timer.textContent = '0:00';
-    tick = setInterval(function () { timer.textContent = fmt(Date.now() - startedAt); labelToggle(); }, 500);
+    tick = setInterval(function () { timer.textContent = fmt(Date.now() - startedAt); labelToggle(); renderLive(); }, 500);
     setRecordingUI(true);
-    if (live) say('Listening… speak your note. Your words appear in the Transcript box. Tap Stop when you are done.');
+    openLive(live ? 'live' : 'audio');
+    if (live) say('Listening… speak your note. Your words appear just above the Stop bar and in the Transcript box. Tap Stop when you are done.');
     else say((wantLive ? errorMessage('start-failed') + ' ' : '') + 'Recording audio only… tap Stop when you are done, then type your note' + (isApple ? ' or use the keyboard’s microphone key.' : '.'));
     if (wantAudio) {
       startRecorder(function (msg) {
@@ -470,6 +593,7 @@
       var usedLive = liveOn;
       liveOn = false;
       setRecordingUI(false);
+      finishingLive();
       function finish() {
         gen++;
         if (usedLive) commitSession();
@@ -483,8 +607,9 @@
             say(msg); showHelp(msg); showDockNote(msg, fatal || 'no-words');
           } else {
             say('Dictation stopped (' + fmt(durationMs) + '). Edit the text if you like, then save it as a journal entry.');
+            savedLive(!!rawTranscript);
           }
-        }
+        } else closeLive(true);
         resolve();
       }
       function afterRecognizer() {
@@ -508,6 +633,7 @@
     base = ''; committed = ''; curFinal = ''; curInterim = '';
     timer.textContent = '';
     choice.hidden = true;
+    closeLive(true);
   }
 
   function hasOriginal() { return !!audioBlob || !!rawTranscript; }
@@ -561,6 +687,7 @@
 
   saveBtn.addEventListener('click', async function () {
     if (!userId || recording) return;
+    closeLive(true); /* v10 */
     var entry;
     try {
       entry = J.save(userId, { title: titleInput.value, body: text.value, entryAt: new Date(startedAt || Date.now()).toISOString() });
@@ -608,7 +735,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS };
+  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }

@@ -134,12 +134,12 @@
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
       <p class="note">These settings sync to your other devices when you are signed in.</p>
-      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v9</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
+      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v10</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
     </section>
   </section>
 </main>
 <footer class="app-footer">
-  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="9">Journal v9</span></p>
+  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="10">Journal v10</span></p>
   <nav aria-label="Footer">
     <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
     <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>
@@ -151,6 +151,23 @@
      outside every card, so nothing on the page can sit above it or take its taps.
      pensieve.js moves the Start dictation button in here while the bar is shown. -->
 <div class="dictation-dock" id="dictation-dock" hidden>
+  <!-- v10: live transcript panel. While you dictate, your words show here, right
+       above the Stop bar, so you never have to scroll down to the Pensieve card.
+       It only mirrors the card's Transcript box (the box is what gets saved). -->
+  <section class="live-panel" id="dictation-live" aria-label="Live transcript" hidden>
+    <div class="live-head">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span class="live-label" id="dictation-live-label">Listening…</span>
+      <span class="live-timer" id="dictation-live-timer" aria-hidden="true"></span>
+    </div>
+    <div class="live-scroll" id="dictation-live-scroll">
+      <p class="live-words" id="dictation-live-words"><span class="live-final" id="dictation-live-final"></span><span class="live-interim" id="dictation-live-interim"></span><span class="live-hint" id="dictation-live-hint"></span></p>
+    </div>
+    <div class="live-actions" id="dictation-live-actions" hidden>
+      <button class="mini" type="button" id="dictation-live-review">Review &amp; edit</button>
+      <button class="mini" type="button" id="dictation-live-close" aria-label="Close the live transcript">OK</button>
+    </div>
+  </section>
   <div class="dock-note" id="dictation-note" role="status" aria-live="polite" hidden>
     <p id="dictation-note-text"></p>
     <button class="mini" type="button" id="dictation-note-keyboard">Use keyboard microphone</button>

@@ -104,7 +104,7 @@ body.has-dictation-space{padding-bottom:calc(120px + env(safe-area-inset-bottom,
 .dock-note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px calc(12px + env(safe-area-inset-right,0px)) 10px calc(12px + env(safe-area-inset-left,0px));background:#1a0d0d;border-top:1px solid #ffd27a;color:#fff;font-size:15px;line-height:1.4}
 .dock-note p{margin:0;flex:1 1 100%}
 .app-version{color:var(--mute)}
-body.has-dictation-bar .update-ready{bottom:calc(72px + var(--bar-lift,0px) + env(safe-area-inset-bottom,0px))}
+body.has-dictation-bar .update-ready{bottom:calc(12px + var(--dock-h,calc(60px + env(safe-area-inset-bottom,0px))) + var(--bar-lift,0px))}
 
 /* v6: note reminders */
 .reminder-tag{appearance:none;display:inline-flex;align-items:center;gap:4px;max-width:100%;margin:8px 0 0;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--sky);background:#06141f;color:var(--sky);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;overflow-wrap:anywhere}
@@ -129,3 +129,26 @@ body.has-dictation-bar .update-ready{bottom:calc(72px + var(--bar-lift,0px) + en
 /* v9: Dictation language picker in Settings */
 .settings-form fieldset+fieldset{margin-top:16px}
 .settings-form select{display:block;width:100%;max-width:360px;min-height:44px;margin-top:4px;border-radius:10px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;font-size:16px;padding:0 10px}
+/* v10: live transcript panel, in the dictation dock right above the Stop bar.
+   Normal flow inside the dock (panel, then any problem message, then the bar),
+   so it never covers the message or the bar. Max ~38% of the visible screen
+   (--live-max is set by pensieve.js from the visual viewport), scrolls inside. */
+.live-panel{display:flex;flex-direction:column;max-height:var(--live-max,38vh);min-height:0;padding:10px calc(14px + env(safe-area-inset-right,0px)) 10px calc(14px + env(safe-area-inset-left,0px));background:#0b1622;border-top:1px solid var(--sky);color:#fff;opacity:1;transition:opacity .35s ease;touch-action:pan-y}
+.live-panel.is-closing{opacity:0}
+.live-head{display:flex;align-items:center;gap:8px;flex:none;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sky);font-weight:600}
+.live-dot{width:10px;height:10px;border-radius:50%;background:#ff6b6b;flex:none;animation:live-pulse 1.2s ease-in-out infinite}
+.live-timer{margin-left:auto;color:var(--mute);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.live-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin-top:6px}
+.live-words{margin:0;font-size:18px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.live-final{color:#fff}
+.live-interim{color:#8fa6b8;font-style:italic}
+.live-hint{color:var(--mute);font-size:15px;font-style:italic}
+.live-actions{display:flex;flex-wrap:wrap;gap:8px;flex:none;margin-top:8px}
+.live-actions .mini{min-height:40px}
+.live-panel.is-audio .live-head{color:#ffd27a}
+.live-panel.is-finishing .live-dot{animation:none;background:var(--mute)}
+.live-panel.is-saved{border-top-color:#7be0a5}
+.live-panel.is-saved .live-head{color:#7be0a5}
+.live-panel.is-saved .live-dot{animation:none;background:#7be0a5}
+@keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.live-panel{transition:none}.live-dot{animation:none}}

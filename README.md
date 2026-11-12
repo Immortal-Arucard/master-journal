@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v9`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v10`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -89,3 +89,23 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   - Version label "Journal v9", cache `master-journal-v9`, precache with `?v=9`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `assets/settings.js`,
   `assets/settings-ui.js`, `README.md`. No SQL (the setting lives in the existing settings JSON), no Worker change.
+
+## v10 — Live transcript panel above the Stop bar
+- Request: see the words while dictating without scrolling down to the Pensieve card.
+- While dictation runs, a live transcript panel sits directly above the bottom Start/Stop bar, inside the
+  same body-level dock (order: panel, problem message, bar; normal flow, so it can never sit over the bar
+  or the message, and the bar keeps the v8 touch handling).
+- Shows this dictation's words as they are recognised: final words in white, words still being recognised
+  lighter and italic. Follows the newest words; if you scroll up inside it to read, it stops following until
+  you scroll back to the bottom. Max height about 38% of the visible screen (`--live-max`, from the visual
+  viewport, so it shrinks with the keyboard / short viewport), scrolls inside. It moves with `--bar-lift`.
+- The card's Transcript box is still the one source of truth (Save uses only the box, nothing is saved twice).
+- Audio-only mode: "Recording audio…" with the timer and a note that there is no live text.
+- On Stop: "Finishing…" while the last words arrive, then "Saved to transcript" with **Review & edit**
+  (scrolls to the Transcript box, no keyboard) and **OK**; it fades after about 2.6 s unless touched.
+  Saving, Discard or a new Start close or refresh it.
+- A problem (blocked, no words, mic) closes the panel and shows the message in its place, as before.
+- "Update ready" notice is lifted by the dock's real height (`--dock-h`).
+- Version label "Journal v10", cache `master-journal-v10`, precache with `?v=10`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.
