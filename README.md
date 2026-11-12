@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v11`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v12`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -119,3 +119,16 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - The status line has a little space under the card (it previously hugged the bottom edge).
 - Version label "Journal v11", cache `master-journal-v11`, precache with `?v=11`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `README.md`. No SQL, no Worker change.
+
+## v12 — Pensieve first screen: no cut-off mode radios
+- On a phone, the first screen showed the long "Speech-to-text uses your device's built-in
+  recognition…" paragraph and the two mode radios (Live text / Audio recording only). The
+  second radio was cut off behind the fixed Start dictation bar.
+- The long explanation is now a closed "How dictation works" disclosure (same text).
+- The radios are replaced on first view by a compact "Mode: Live text · Change" line, placed
+  below the Title and Transcript fields. Tapping Change reveals the same two radio options.
+  Choosing a mode still works exactly as before (one-mic-job rule, saving, and settings are
+  unchanged).
+- Version label "Journal v12", cache `master-journal-v12`, precache with `?v=12`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.

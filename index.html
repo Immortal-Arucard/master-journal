@@ -37,16 +37,15 @@
     <section class="panel pensieve" id="pensieve" aria-labelledby="pensieve-h">
       <h2 id="pensieve-h" data-pensieve-name>Pensieve</h2>
       <p class="note">Speak a note into your Journal. Tap Start, talk, then tap Stop. You can fix the words before saving. The microphone is only used after you tap Start.</p>
-      <p class="note" id="pensieve-support"></p>
+      <p class="note" id="pensieve-support" hidden></p>
+      <details class="how-dictation" id="pensieve-how" hidden>
+        <summary>How dictation works</summary>
+        <p class="note" id="pensieve-how-text"></p>
+      </details>
       <div class="row">
         <button class="take" type="button" id="pensieve-toggle" aria-pressed="false">Start dictation</button>
         <span class="rec-timer" id="pensieve-timer" aria-live="off"></span>
       </div>
-      <fieldset class="pensieve-mode" id="pensieve-mode" hidden>
-        <legend>On this phone the microphone can do one of these at a time:</legend>
-        <label class="opt"><input type="radio" name="pensieve-mode" value="live" checked> Live text (your words appear as you speak)</label>
-        <label class="opt"><input type="radio" name="pensieve-mode" value="audio"> Audio recording only (no live text)</label>
-      </fieldset>
       <p class="note" id="pensieve-status" role="status" aria-live="polite"></p>
       <div class="jform">
         <label for="pensieve-title">Title (optional)</label>
@@ -54,6 +53,12 @@
         <label for="pensieve-text">Transcript (you can edit it)</label>
         <textarea id="pensieve-text" maxlength="20000"></textarea>
         <p class="interim" id="pensieve-interim" aria-live="polite"></p>
+        <p class="pensieve-mode-line" id="pensieve-mode-line" hidden>Mode: <span id="pensieve-mode-label">Live text</span> · <button type="button" class="mode-change" id="pensieve-mode-change" aria-expanded="false">Change</button></p>
+        <fieldset class="pensieve-mode" id="pensieve-mode" hidden>
+          <legend>On this phone the microphone can do one of these at a time:</legend>
+          <label class="opt"><input type="radio" name="pensieve-mode" value="live" checked> Live text (your words appear as you speak)</label>
+          <label class="opt"><input type="radio" name="pensieve-mode" value="audio"> Audio recording only (no live text)</label>
+        </fieldset>
         <div class="flag" id="pensieve-help" hidden>
           <p style="margin:0" id="pensieve-help-text">If no words appear, use your keyboard's microphone instead: tap the Transcript box, then tap the microphone key on the keyboard and speak.</p>
           <div class="actions">
@@ -132,14 +137,14 @@
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
       <p class="note">These settings sync to your other devices when you are signed in.</p>
-      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v11</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
+      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v12</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
     </section>
   </section>
   <p class="device-note"><strong>Syncs across your devices.</strong> When you are signed in, your entries and settings are saved to your private TWGI master account and show up on every device where you sign in. They also stay on this device, so the Journal works offline; changes made offline sync when you are back online. Original dictation recordings stay on the device that recorded them.</p>
   <p class="note sync-note" id="journal-sync" role="status" aria-live="polite" hidden></p>
 </main>
 <footer class="app-footer">
-  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="11">Journal v11</span></p>
+  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="12">Journal v12</span></p>
   <nav aria-label="Footer">
     <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
     <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>

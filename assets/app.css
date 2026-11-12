@@ -63,6 +63,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .device-note{margin:24px 0 0;padding:10px 12px;border:1px dashed var(--sky);border-radius:12px;color:#fff;font-size:14px;line-height:1.45}
 .pensieve.is-recording{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b inset}
 .rec-timer{align-self:center;color:var(--mute);font-variant-numeric:tabular-nums}
+/* v12: long explanation is a closed disclosure; mode radios sit under the
+   Title/Transcript fields and stay hidden until Change is tapped. */
+.how-dictation{margin:8px 0 0;color:var(--mute);font-size:14px;line-height:1.45}
+.how-dictation summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--sky);font-weight:600}
+.how-dictation .note{margin:8px 0 0}
+.pensieve-mode-line{margin:10px 0 0;color:var(--mute);font-size:14px;line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;min-height:44px}
+.pensieve-mode-line .mode-change{appearance:none;margin:0;padding:0 6px;min-height:44px;border:0;background:transparent;color:var(--sky);font:inherit;font-weight:600;cursor:pointer}
 .pensieve-mode{border:0;margin:8px 0 0;padding:0;min-width:0}
 .pensieve-mode legend{font-size:14px;color:var(--mute);margin-bottom:2px}
 #pensieve-help{margin-top:8px}

@@ -45,7 +45,13 @@
    "Recording audio" and the timer. When dictation stops it briefly says
    "Saved to transcript" with a Review & edit button, then fades away. A
    problem message replaces it (never covered), and the bar keeps its own
-   v8 touch handling. */
+   v8 touch handling.
+
+   v12 (first-screen layout). The long "how dictation works" explanation is a
+   closed disclosure, and the Live text / Audio only radios sit under the
+   Title and Transcript fields, hidden behind a compact "Mode: Live text ·
+   Change" line, so they are not cut off by the Start dictation bar. Mode
+   behaviour, the one-mic-job rule and saved settings are unchanged. */
 (function (global) {
   var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
@@ -71,6 +77,11 @@
   var skipBtn = document.getElementById('pensieve-skip');
   var timer = document.getElementById('pensieve-timer');
   var modeBox = document.getElementById('pensieve-mode');
+  var modeLine = document.getElementById('pensieve-mode-line');
+  var modeLabel = document.getElementById('pensieve-mode-label');
+  var modeChange = document.getElementById('pensieve-mode-change');
+  var howBox = document.getElementById('pensieve-how');
+  var howText = document.getElementById('pensieve-how-text');
   var help = document.getElementById('pensieve-help');
   var helpText = document.getElementById('pensieve-help-text');
   var keyboardBtn = document.getElementById('pensieve-keyboard');
@@ -289,23 +300,39 @@
     try { text.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (err) { try { text.scrollIntoView(); } catch (e) {} }
   });
 
+  function paintModeLine() {
+    if (modeLabel) modeLabel.textContent = mode() === 'audio' ? 'Audio recording only' : 'Live text';
+  }
   function describeSupport() {
-    var bits = [];
+    var alerts = [];
+    var explain = [];
     if (!Recognition) {
-      bits.push(isApple && standalone
+      alerts.push(isApple && standalone
         ? 'Live speech-to-text is not available in the Home Screen app on this iPhone. ' + KEYBOARD_TIP + ' You can also record audio, or open the Journal in Safari for live text.'
         : !Recognition && isAndroid
         ? 'This browser cannot turn speech into text. Open the Journal in Chrome for live text, or ' + KEYBOARD_TIP.charAt(0).toLowerCase() + KEYBOARD_TIP.slice(1)
         : 'This browser cannot turn speech into text. You can still record audio and type your note, or use your keyboard’s microphone key.');
     }
-    if (!canRecord) bits.push('This browser cannot record audio here. ' + (Recognition ? 'Speech-to-text may still work.' : 'You can type your note.'));
-    if (Recognition) bits.push('Speech-to-text uses your device’s built-in recognition. TWGI never sends your audio or words anywhere; ' + (isApple ? 'on iPhone, Apple’s Siri & Dictation service turns your speech into text.' : isAndroid ? 'on Android, Chrome uses Google’s speech service to turn your speech into text.' : 'on some browsers, the browser’s own speech service may process audio.'));
-    if (oneMicJob && Recognition && canRecord) bits.push('On this phone the microphone can either show live text or record audio, not both at once.');
-    support.textContent = bits.join(' ');
-    if (modeBox) modeBox.hidden = !(oneMicJob && Recognition && canRecord);
+    if (!canRecord) alerts.push('This browser cannot record audio here. ' + (Recognition ? 'Speech-to-text may still work.' : 'You can type your note.'));
+    if (Recognition) explain.push('Speech-to-text uses your device’s built-in recognition. TWGI never sends your audio or words anywhere; ' + (isApple ? 'on iPhone, Apple’s Siri & Dictation service turns your speech into text.' : isAndroid ? 'on Android, Chrome uses Google’s speech service to turn your speech into text.' : 'on some browsers, the browser’s own speech service may process audio.'));
+    if (oneMicJob && Recognition && canRecord) explain.push('On this phone the microphone can either show live text or record audio, not both at once.');
+    support.textContent = alerts.join(' ');
+    support.hidden = !alerts.length;
+    if (howText) howText.textContent = explain.join(' ');
+    if (howBox) howBox.hidden = !explain.length;
+    var showMode = !!(oneMicJob && Recognition && canRecord);
+    if (modeLine) modeLine.hidden = !showMode;
+    if (modeBox) modeBox.hidden = true; /* v12: radios stay closed until Change */
+    paintModeLine();
     if (isApple || !Recognition) showHelp('Tip: ' + KEYBOARD_TIP);
     if (!Recognition && !canRecord) toggle.disabled = true;
   }
+  if (modeChange) modeChange.addEventListener('click', function () {
+    if (!modeBox) return;
+    modeBox.hidden = false;
+    modeChange.setAttribute('aria-expanded', 'true');
+  });
+  if (modeBox) modeBox.addEventListener('change', paintModeLine);
 
   /* ----- full-width Start/Stop bar fixed to the bottom of the home screen ----- */
   function typingElsewhere() {
@@ -409,6 +436,7 @@
     saveBtn.disabled = on;
     discardBtn.disabled = on;
     if (modeBox) Array.prototype.forEach.call(modeBox.querySelectorAll('input'), function (i) { i.disabled = on; });
+    if (modeChange) modeChange.disabled = on;
     text.readOnly = on && liveOn;
     updateBar();
   }
