@@ -62,7 +62,6 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .mini.danger{color:#ff8a8a}
 .device-note{margin:12px 0 0;padding:10px 12px;border:1px dashed var(--sky);border-radius:12px;color:#fff;font-size:14px;line-height:1.45}
 .pensieve.is-recording{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b inset}
-.pensieve.is-recording #pensieve-toggle{background:#ff6b6b;border-color:#ff6b6b}
 .rec-timer{align-self:center;color:var(--mute);font-variant-numeric:tabular-nums}
 .pensieve-mode{border:0;margin:8px 0 0;padding:0;min-width:0}
 .pensieve-mode legend{font-size:14px;color:var(--mute);margin-bottom:2px}
@@ -90,14 +89,22 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 
 /* v5: Start/Stop dictation is a full-width bar fixed to the bottom of the
    home screen, flush with the edge but above the iPhone home indicator.
-   v7: no viewport-fit=cover (see index.html), so the bar's drawn position and
-   its tap area are the same on iPhone; --bar-lift (pensieve.js) keeps it
-   inside the visible area if iOS leaves the viewport short. */
+   v7: no viewport-fit=cover (see index.html); --bar-lift (pensieve.js) keeps it
+   inside the visible area if iOS leaves the viewport short.
+   v8: the bar sits in its own dock, a direct child of <body> (outside every
+   card), with its own stacking layer. Recording red is on the bar itself. */
 body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-body.has-dictation-space{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
-#pensieve-toggle.dictation-bar{position:fixed;left:0;right:0;bottom:var(--bar-lift,0px);pointer-events:auto;touch-action:manipulation;z-index:900;width:100%;margin:0;border-radius:0;border:0;border-top:1px solid var(--sky);min-height:calc(60px + env(safe-area-inset-bottom,0px));padding:0 calc(16px + env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) calc(16px + env(safe-area-inset-left,0px));font-size:18px;box-shadow:0 -6px 18px rgba(0,0,0,.45)}
-.pensieve.is-recording #pensieve-toggle.dictation-bar{background:#ff6b6b;border-top-color:#ff6b6b;color:#000}
-body.has-dictation-bar .update-ready{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+body.has-dictation-space{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+.dictation-dock{position:fixed;left:0;right:0;bottom:var(--bar-lift,0px);z-index:900;isolation:isolate;pointer-events:auto;margin:0;padding:0;background:#000;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+#pensieve-toggle.dictation-bar{position:relative;display:flex;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;z-index:1;width:100%;margin:0;border-radius:0;border:0;border-top:1px solid var(--sky);min-height:calc(60px + env(safe-area-inset-bottom,0px));padding:0 calc(16px + env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) calc(16px + env(safe-area-inset-left,0px));font-size:18px;box-shadow:0 -6px 18px rgba(0,0,0,.45)}
+#pensieve-toggle.dictation-bar:hover{filter:none}
+#pensieve-toggle.dictation-bar:active{background:#8fdcff}
+#pensieve-toggle[aria-pressed="true"]{background:#ff6b6b;border-color:#ff6b6b;color:#000}
+#pensieve-toggle.dictation-bar[aria-pressed="true"]{border-top-color:#ff6b6b}
+.dock-note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px calc(12px + env(safe-area-inset-right,0px)) 10px calc(12px + env(safe-area-inset-left,0px));background:#1a0d0d;border-top:1px solid #ffd27a;color:#fff;font-size:15px;line-height:1.4}
+.dock-note p{margin:0;flex:1 1 100%}
+.app-version{color:var(--mute)}
+body.has-dictation-bar .update-ready{bottom:calc(72px + var(--bar-lift,0px) + env(safe-area-inset-bottom,0px))}
 
 /* v6: note reminders */
 .reminder-tag{appearance:none;display:inline-flex;align-items:center;gap:4px;max-width:100%;margin:8px 0 0;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--sky);background:#06141f;color:var(--sky);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;overflow-wrap:anywhere}

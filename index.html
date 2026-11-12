@@ -113,11 +113,12 @@
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
       <p class="note">These settings sync to your other devices when you are signed in.</p>
+      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v8</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
     </section>
   </section>
 </main>
 <footer class="app-footer">
-  <p>Journal · The World Government, Inc.</p>
+  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="8">Journal v8</span></p>
   <nav aria-label="Footer">
     <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
     <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>
@@ -125,6 +126,16 @@
     <a href="https://theworldgovernmentincorporated.com/privacy.html">Privacy</a>
   </nav>
 </footer>
+<!-- v8: the bottom Start dictation bar lives here, as a direct child of <body>,
+     outside every card, so nothing on the page can sit above it or take its taps.
+     pensieve.js moves the Start dictation button in here while the bar is shown. -->
+<div class="dictation-dock" id="dictation-dock" hidden>
+  <div class="dock-note" id="dictation-note" role="status" aria-live="polite" hidden>
+    <p id="dictation-note-text"></p>
+    <button class="mini" type="button" id="dictation-note-keyboard">Use keyboard microphone</button>
+    <button class="mini" type="button" id="dictation-note-close" aria-label="Close this message">OK</button>
+  </div>
+</div>
 <script src="/assets/auto-update.js"></script>
 <script src="/assets/app.js"></script>
 <script src="/vendor/supabase.js"></script>

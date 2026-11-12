@@ -12,4 +12,20 @@
   window.addEventListener('online', sync);
   window.addEventListener('offline', sync);
   sync();
+
+  // v8: show which saved (offline) copy this phone is running, e.g. "master-journal-v8",
+  // so a stale copy is easy to spot. Read only; nothing is changed.
+  function showCache() {
+    var slots = document.querySelectorAll('[data-sw-cache]');
+    if (!slots.length) return;
+    function put(t) { Array.prototype.forEach.call(slots, function (n) { n.textContent = t; }); }
+    if (!window.caches || !caches.keys) { put('not available'); return; }
+    caches.keys().then(function (keys) {
+      var mine = keys.filter(function (k) { return k.indexOf('master-journal-') === 0; }).sort();
+      put(mine.length ? mine.join(', ') : 'not saved yet');
+    }).catch(function () { put('not available'); });
+  }
+  showCache();
+  if (navigator.serviceWorker && navigator.serviceWorker.addEventListener) navigator.serviceWorker.addEventListener('controllerchange', showCache);
+  window.addEventListener('pageshow', showCache);
 })();

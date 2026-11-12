@@ -55,6 +55,14 @@
   var journalRoot = document.getElementById('journal');
   var journalForm = document.getElementById('journal-form');
   var journalCancel = document.getElementById('journal-cancel');
+  /* v8: body-level dock for the bottom bar, and a message line right above it */
+  var dock = document.getElementById('dictation-dock');
+  var homeRow = toggle.parentNode, homeNext = toggle.nextSibling;
+  var dockNote = document.getElementById('dictation-note');
+  var dockNoteText = document.getElementById('dictation-note-text');
+  var dockNoteKeyboard = document.getElementById('dictation-note-keyboard');
+  var dockNoteClose = document.getElementById('dictation-note-close');
+  var lastIssue = document.getElementById('dictation-last');
 
   var Recognition = global.SpeechRecognition || global.webkitSpeechRecognition || null;
   var canRecord = !!(nav.mediaDevices && nav.mediaDevices.getUserMedia && global.MediaRecorder);
@@ -155,8 +163,53 @@
     if (show && !shown && pointerDown) return; /* wait for the finger to lift */
     document.body.classList.toggle('has-dictation-bar', show);
     toggle.classList.toggle('dictation-bar', show);
+    placeToggle(show);
     if (show && typeof liftBar === 'function' && vv !== undefined) liftBar();
   }
+  /* v8: while the bar is shown the button lives in the body-level dock, so no
+     card, wrapper or stacking layer can ever be above it; otherwise it goes
+     back to its place in the Pensieve card. */
+  function placeToggle(show) {
+    if (!dock) return;
+    if (show) {
+      if (toggle.parentNode !== dock) dock.appendChild(toggle);
+      dock.hidden = false;
+    } else {
+      if (toggle.parentNode !== homeRow) homeRow.insertBefore(toggle, homeNext && homeNext.parentNode === homeRow ? homeNext : null);
+      dock.hidden = true;
+      hideDockNote();
+    }
+  }
+  /* v8: problems are shown right above the bar (the card may be off screen). */
+  function showDockNote(msg, code) {
+    remember(code || 'message');
+    if (!dockNote || !dockNoteText) return;
+    dockNoteText.textContent = msg;
+    if (dockNoteKeyboard) dockNoteKeyboard.hidden = !(isApple || !Recognition);
+    dockNote.hidden = false;
+  }
+  function hideDockNote() { if (dockNote) dockNote.hidden = true; }
+  function remember(code) {
+    var line = 'Last dictation problem: ' + code + ' at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (standalone ? ' (Home Screen app)' : '') + '.';
+    try { global.localStorage.setItem('twgi-journal-dictation-last', line); } catch (err) {}
+    showLast(line);
+  }
+  function showLast(line) {
+    if (!lastIssue || !line) return;
+    lastIssue.textContent = ' · ' + line;
+    lastIssue.hidden = false;
+  }
+  try { showLast(global.localStorage.getItem('twgi-journal-dictation-last')); } catch (err) {}
+  if (dockNoteClose) dockNoteClose.addEventListener('click', hideDockNote);
+  if (dockNoteKeyboard) dockNoteKeyboard.addEventListener('click', function () {
+    hideDockNote();
+    if (recording) return;
+    text.readOnly = false;
+    try { text.scrollIntoView({ block: 'center' }); } catch (err) {}
+    text.focus(); /* inside the tap, so the iPhone keyboard (with its mic key) opens */
+    say('Tap the microphone key on your keyboard and speak, or type your note.');
+  });
+
   /* v7: if iOS leaves the visible area shorter than the layout viewport
      (keyboard just closed, or the Home Screen app's short viewport), lift the
      bar by that much so what you see is what you can tap. Never while typing. */
@@ -280,7 +333,7 @@
       showHelp('Tip: ' + KEYBOARD_TIP);
       return;
     }
-    stop({ silent: true }).then(function () { say(msg); showHelp(msg); });
+    stop({ silent: true }).then(function () { say(msg); showHelp(msg); showDockNote(msg, code); });
   }
 
   /* Must run synchronously inside the tap (iOS needs the tap to allow it). */
@@ -321,6 +374,7 @@
 
   function start() {
     say('');
+    hideDockNote();
     audioBlob = null; chunks = []; rawTranscript = ''; durationMs = 0; liveOn = false;
     if (!isApple) hideHelp();
     var m = mode();
@@ -329,7 +383,7 @@
     startedAt = Date.now();
     var live = wantLive && startRecognition();
     if (wantLive && !live && !wantAudio && canRecord) wantAudio = true; /* fall back to a recording */
-    if (!live && !wantAudio) { say(errorMessage('start-failed')); showHelp(errorMessage('start-failed')); return; }
+    if (!live && !wantAudio) { say(errorMessage('start-failed')); showHelp(errorMessage('start-failed')); showDockNote(errorMessage('start-failed'), 'start-failed'); return; }
     timer.textContent = '0:00';
     tick = setInterval(function () { timer.textContent = fmt(Date.now() - startedAt); labelToggle(); }, 500);
     setRecordingUI(true);
@@ -338,7 +392,7 @@
     if (wantAudio) {
       startRecorder(function (msg) {
         if (liveOn) return; /* live text still works without the recording */
-        stop({ silent: true }).then(function () { say(msg); });
+        stop({ silent: true }).then(function () { say(msg); showDockNote(msg, 'microphone'); });
       });
     }
   }
@@ -363,7 +417,7 @@
         if (!opts.silent) {
           if (usedLive && !rawTranscript) {
             var msg = fatal ? errorMessage(fatal) : 'No words came through from speech-to-text. ' + KEYBOARD_TIP + (isApple ? ' If this keeps happening, close the Journal app fully and open it again.' : '');
-            say(msg); showHelp(msg);
+            say(msg); showHelp(msg); showDockNote(msg, fatal || 'no-words');
           } else {
             say('Dictation stopped (' + fmt(durationMs) + '). Edit the text if you like, then save it as a journal entry.');
           }
@@ -408,9 +462,30 @@
     if (id) document.dispatchEvent(new CustomEvent('twgi-journal-new-entry', { detail: { id: id } }));
   }
 
-  toggle.addEventListener('click', function () {
-    if (!userId) return;
+  /* v8: one tap = one Start or Stop. A real <button> click works on iPhone;
+     on the bottom bar a finished touch also counts (and cancels iOS's own
+     follow-up click), so a tap is never lost and never runs twice. */
+  var touchAt = null, touchedAt = 0;
+  function activate() {
+    if (!userId || toggle.disabled) return;
     if (recording) stop(); else start();
+  }
+  toggle.addEventListener('click', function () {
+    if (touchedAt && Date.now() - touchedAt < 800) { touchedAt = 0; return; } /* already handled on touchend */
+    activate();
+  });
+  toggle.addEventListener('touchstart', function (ev) {
+    var t = ev.changedTouches && ev.changedTouches[0];
+    touchAt = toggle.classList.contains('dictation-bar') && t ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+  }, { passive: true });
+  toggle.addEventListener('touchcancel', function () { touchAt = null; });
+  toggle.addEventListener('touchend', function (ev) {
+    var s0 = touchAt; touchAt = null;
+    var t = ev.changedTouches && ev.changedTouches[0];
+    if (!s0 || !t || Math.abs(t.clientX - s0.x) > 12 || Math.abs(t.clientY - s0.y) > 12 || Date.now() - s0.at > 1000) return;
+    if (ev.cancelable) ev.preventDefault();
+    touchedAt = Date.now();
+    activate();
   });
 
   if (keyboardBtn) keyboardBtn.addEventListener('click', function () {
@@ -469,7 +544,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, NO_WORDS_MS: NO_WORDS_MS };
+  global.TWGIPensieve._debug = { isApple: isApple, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }
