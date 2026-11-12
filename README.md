@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v15`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v16`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -14,7 +14,7 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   working and says sync is not switched on yet. Original dictation copies stay on the recording device.
 - Auto-update (v4, `assets/auto-update.js`): checks for a new version on open / return to screen and
   reloads once when it takes over (no loops; waits while typing or dictating).
-- Pensieve: voice dictation (Web Speech API + MediaRecorder).
+- The Pensieve: voice dictation (Web Speech API + MediaRecorder).
   v5 iPhone fix: on iPhone/iPad (all iOS browsers, incl. the Home Screen app) the mic does ONE job per
   dictation — live text (default) or audio recording only — because iOS cannot run speech recognition
   and a recording at once (v4 opened the recording first, so recognition heard silence: empty box, no
@@ -26,7 +26,7 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - Note reminders (v6, `assets/reminders.js`, same file as the Worker's `reminders-core.cjs`): any note
   can have one optional reminder (name, first date/time, IANA time zone, repeat: once, daily, weekly on
   chosen days, monthly, every N hours, every N days; on/off; edit; delete). Notes never get one by
-  themselves: after a NEW note is saved (form or Pensieve) it asks "Add a reminder?" (Add reminder /
+  themselves: after a NEW note is saved (form or The Pensieve) it asks "Add a reminder?" (Add reminder /
   No thanks). A bell tag shows on notes with a reminder. It syncs with the note in the column
   `master_journal_entries.reminder` (NEW SQL `supabase/master_journal_reminders.sql`, NOT applied);
   until that column exists notes sync as before and reminders stay on the device. The push Worker
@@ -44,10 +44,10 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`. No SQL, no Worker change.
 
 ## v8 — Start dictation bar: "it doesn't react, and the Pensieve card behind it flashes red once"
-- What the red flash is: the Pensieve card's red "recording" border (`.pensieve.is-recording`). It only
+- What the red flash is: The Pensieve card's red "recording" border (`.pensieve.is-recording`). It only
   appears when dictation has STARTED, so the tap did reach the bar. Dictation then stopped again at once
   (most likely iPhone speech-to-text refusing or ending immediately in the Home Screen app) and the
-  explanation was written only inside the Pensieve card, not where the finger was. So it looked like
+  explanation was written only inside The Pensieve card, not where the finger was. So it looked like
   "nothing happened" and "the card behind reacted".
 - Fixes:
   - The bar now lives in its own dock, a direct child of `<body>` (`#dictation-dock`), outside every card,
@@ -91,7 +91,7 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   `assets/settings-ui.js`, `README.md`. No SQL (the setting lives in the existing settings JSON), no Worker change.
 
 ## v10 — Live transcript panel above the Stop bar
-- Request: see the words while dictating without scrolling down to the Pensieve card.
+- Request: see the words while dictating without scrolling down to The Pensieve card.
 - While dictation runs, a live transcript panel sits directly above the bottom Start/Stop bar, inside the
   same body-level dock (order: panel, problem message, bar; normal flow, so it can never sit over the bar
   or the message, and the bar keeps the v8 touch handling).
@@ -112,15 +112,15 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 
 ## v11 — Sync card moved to the bottom of the home page
 - The "Syncs across your devices." explanation card (dashed border) and the "Synced across your devices."
-  status line sat just under the Journal heading and intro, above the Pensieve, taking the best space
+  status line sat just under the Journal heading and intro, above The Pensieve, taking the best space
   on the phone screen for fine print.
-- Both now sit at the bottom of the home page: after the Pensieve, entries and notes, and Settings,
+- Both now sit at the bottom of the home page: after The Pensieve, entries and notes, and Settings,
   just above the footer. The card's text and behaviour are unchanged.
 - The status line has a little space under the card (it previously hugged the bottom edge).
 - Version label "Journal v11", cache `master-journal-v11`, precache with `?v=11`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `README.md`. No SQL, no Worker change.
 
-## v12 — Pensieve first screen: no cut-off mode radios
+## v12 — The Pensieve first screen: no cut-off mode radios
 - On a phone, the first screen showed the long "Speech-to-text uses your device's built-in
   recognition…" paragraph and the two mode radios (Live text / Audio recording only). The
   second radio was cut off behind the fixed Start dictation bar.
@@ -134,7 +134,7 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   No SQL, no Worker change.
 
 ## v13 — Dictate the title with a mic in the Title field
-- A small microphone button sits inside the right edge of the Pensieve "Title (optional)"
+- A small microphone button sits inside the right edge of The Pensieve "Title (optional)"
   field (icon button, aria-label "Dictate title", 40px tap target, vertically centred;
   the field is padded so typed text never runs under it).
 - One tap starts speech recognition for the title only, always as live text (the Mode
@@ -187,3 +187,14 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/journal.js`,
   `assets/journal-sync.js`, `assets/journal-ui.js`, `assets/pensieve.js`,
   `assets/originals.js`, `README.md`. No SQL, no Worker change.
+
+## v16 — The Pensieve
+- The dictation card, and the other places that used the on-screen name, now say
+  "The Pensieve" instead of "Pensieve" (heading, Settings copy). The Title field
+  label stays "Title (optional)" — it never included the name, so it was left as-is
+  to avoid a clumsy "The Pensieve Title (optional)" and to stay in line with the
+  New entry form. Sentences that already had "the" in front of the name were
+  reworded so they do not read "the The Pensieve".
+- Version label "Journal v16", cache `master-journal-v16`, precache with `?v=16`.
+- Publishing: replace `index.html`, `sw.js`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.

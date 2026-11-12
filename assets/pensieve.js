@@ -67,7 +67,7 @@
    Mode line and Save/Discard sit in a review block below a short divider,
    always in the DOM. Review & edit still scrolls to the Transcript box. */
 (function (global) {
-  var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
+  var PENSIEVE_NAME = 'The Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
 
   var root = document.getElementById('pensieve');
