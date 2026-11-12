@@ -3,7 +3,7 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v13`).
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v14`).
 - Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
@@ -151,5 +151,21 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   focuses the Title field so the keyboard microphone can be used. The existing
   "Use keyboard microphone" fallback is unchanged.
 - Version label "Journal v13", cache `master-journal-v13`, precache with `?v=13`.
+- Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.
+
+## v14 — First screen ends at the Title field
+- On a phone, the first screen showed the Transcript box, its label, and the Mode line
+  above the fixed Start dictation bar. Christopher wanted only the Title field visible
+  there (his signed-in header is taller: the account button sits on its own row).
+- The Pensieve card is split: a top block (intro through the Title field and its mic)
+  fills the space above the bar with `min-height: calc(100svh - header - dock - the
+  space already above the card)`, so the Title sits just above Start dictation. A short
+  divider then opens the review block: Transcript (still always in the DOM, still the
+  text that is saved), Mode, and Save / Discard. Not an empty gap — the title block
+  is pushed to the bottom of the first screen with flex.
+- During dictation, words still appear in the live panel above the bar. "Review & edit"
+  still scrolls to the Transcript box. Nothing else about dictation changes.
+- Version label "Journal v14", cache `master-journal-v14`, precache with `?v=14`.
 - Publishing: replace `index.html`, `sw.js`, `assets/app.css`, `assets/pensieve.js`, `README.md`.
   No SQL, no Worker change.

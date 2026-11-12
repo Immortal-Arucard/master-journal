@@ -35,6 +35,7 @@
   </section>
   <section class="journal" id="journal" hidden aria-label="Your journal">
     <section class="panel pensieve" id="pensieve" aria-labelledby="pensieve-h">
+      <div class="pensieve-top" id="pensieve-top">
       <h2 id="pensieve-h" data-pensieve-name>Pensieve</h2>
       <p class="note">Speak a note into your Journal. Tap Start, talk, then tap Stop. You can fix the words before saving. The microphone is only used after you tap Start.</p>
       <p class="note" id="pensieve-support" hidden></p>
@@ -47,7 +48,7 @@
         <span class="rec-timer" id="pensieve-timer" aria-live="off"></span>
       </div>
       <p class="note" id="pensieve-status" role="status" aria-live="polite"></p>
-      <div class="jform">
+      <div class="jform pensieve-title-block">
         <label for="pensieve-title">Title (optional)</label>
         <div class="title-mic-wrap" id="pensieve-title-wrap">
           <input type="text" id="pensieve-title" autocomplete="off" maxlength="160">
@@ -55,6 +56,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
           </button>
         </div>
+      </div>
+      </div>
+      <div class="pensieve-review" id="pensieve-review">
+      <div class="jform">
         <label for="pensieve-text">Transcript (you can edit it)</label>
         <textarea id="pensieve-text" maxlength="20000"></textarea>
         <p class="interim" id="pensieve-interim" aria-live="polite"></p>
@@ -81,6 +86,7 @@
             <button class="take ghost" type="button" id="pensieve-skip">Don't save it</button>
           </div>
         </div>
+      </div>
       </div>
     </section>
     <section class="panel" aria-labelledby="journal-form-heading">
@@ -142,14 +148,14 @@
       <fieldset class="settings-form push-reminder" id="journal-reminder"></fieldset>
       <p class="note" id="settings-status" role="status" aria-live="polite"></p>
       <p class="note">These settings sync to your other devices when you are signed in.</p>
-      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v13</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
+      <p class="note app-version" id="app-version-detail">This app: <strong>Journal v14</strong> · offline copy: <span data-sw-cache>checking…</span><span id="dictation-last" hidden></span></p>
     </section>
   </section>
   <p class="device-note"><strong>Syncs across your devices.</strong> When you are signed in, your entries and settings are saved to your private TWGI master account and show up on every device where you sign in. They also stay on this device, so the Journal works offline; changes made offline sync when you are back online. Original dictation recordings stay on the device that recorded them.</p>
   <p class="note sync-note" id="journal-sync" role="status" aria-live="polite" hidden></p>
 </main>
 <footer class="app-footer">
-  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="13">Journal v13</span></p>
+  <p>Journal · The World Government, Inc. · <span class="app-version" data-app-version="14">Journal v14</span></p>
   <nav aria-label="Footer">
     <a href="https://theworldgovernmentincorporated.com/account/">Master account</a>
     <a href="https://taskmaster.theworldgovernmentincorporated.com/">Taskmaster</a>

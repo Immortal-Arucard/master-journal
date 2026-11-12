@@ -46,6 +46,12 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .journal{margin-top:22px;min-width:0}
 .panel{margin-top:22px;padding:16px;border:1px solid var(--line);border-radius:14px}
 .panel h2{margin:0 0 8px;font-family:"Cormorant Garamond",Georgia,serif;font-size:28px;font-weight:600}
+/* v14: first screen ends at the Title field. The top of the Pensieve card
+   fills the space above the Start dictation bar (header + dock measured into
+   CSS variables), so the Transcript block starts cleanly below the fold. */
+.pensieve-top{display:flex;flex-direction:column;min-height:calc(100svh - var(--app-header-h,64px) - var(--fold-dock-h,var(--dock-h,60px)) - var(--bar-lift,0px) - var(--pensieve-above,0px));padding-bottom:16px}
+.pensieve-title-block{margin-top:auto;padding-top:12px}
+.pensieve-review{margin-top:8px;padding-top:18px;border-top:1px solid var(--line)}
 .jform{display:grid;gap:10px}
 .jform label{font-size:14px;color:var(--mute)}
 .jform input,.jform textarea,.jsearch{width:100%;min-width:0;min-height:48px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#000;color:#fff;font:inherit;font-size:16px}

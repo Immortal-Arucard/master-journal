@@ -59,7 +59,13 @@
    trimmed, a trailing period is dropped, and it replaces an empty title or
    is appended with a space. It stops after that utterance, after about 8 s of
    silence, or on a second tap. Main dictation and the title mic cannot run
-   at the same time. */
+   at the same time.
+
+   v14 (first screen). The Pensieve card is split so the first screen ends at
+   the Title field: a top block fills the space above the Start dictation bar
+   (min-height: 100svh minus the header and the bar), and the Transcript,
+   Mode line and Save/Discard sit in a review block below a short divider,
+   always in the DOM. Review & edit still scrolls to the Transcript box. */
 (function (global) {
   var PENSIEVE_NAME = 'Pensieve'; /* rename here only */
   global.TWGIPensieve = { NAME: PENSIEVE_NAME };
@@ -370,6 +376,7 @@
     toggle.classList.toggle('dictation-bar', show);
     placeToggle(show);
     if (show && typeof liftBar === 'function' && vv !== undefined) liftBar();
+    else sizePensieveFold();
   }
   /* v8: while the bar is shown the button lives in the body-level dock, so no
      card, wrapper or stacking layer can ever be above it; otherwise it goes
@@ -429,7 +436,32 @@
     }
     document.documentElement.style.setProperty('--bar-lift', lift + 'px');
     sizeLive(); /* v10: the panel's max height follows the visible area */
+    sizePensieveFold();
     return lift;
+  }
+  /* v14: measure the header and how far the Title block sits below it, so the
+     top of the Pensieve card fills the first screen and the Transcript starts
+     below the Start dictation bar. Uses the idle bar height (not the live
+     panel) so the fold does not jump while dictating. */
+  function sizePensieveFold() {
+    var el = document.getElementById('pensieve-top');
+    var header = document.querySelector('.app-header');
+    var headerH = header ? header.offsetHeight : 0;
+    document.documentElement.style.setProperty('--app-header-h', headerH + 'px');
+    var barH = 60;
+    if (toggle && toggle.classList.contains('dictation-bar')) barH = toggle.offsetHeight || 60;
+    document.documentElement.style.setProperty('--fold-dock-h', barH + 'px');
+    if (!el || !journalRoot || journalRoot.hidden) {
+      document.documentElement.style.setProperty('--pensieve-above', '0px');
+      return;
+    }
+    var y = el.getBoundingClientRect().top + (global.scrollY || global.pageYOffset || 0);
+    var above = Math.max(0, Math.round(y - headerH));
+    document.documentElement.style.setProperty('--pensieve-above', above + 'px');
+  }
+  if (global.ResizeObserver) {
+    var headerEl = document.querySelector('.app-header');
+    if (headerEl) new ResizeObserver(function () { sizePensieveFold(); }).observe(headerEl);
   }
   if (vv && vv.addEventListener) { vv.addEventListener('resize', liftBar); vv.addEventListener('scroll', liftBar); }
   global.addEventListener('resize', liftBar);
@@ -944,7 +976,7 @@
   if (journalCancel && global.MutationObserver) new MutationObserver(updateBar).observe(journalCancel, { attributes: true, attributeFilter: ['hidden'] });
   if (journalRoot && global.MutationObserver) new MutationObserver(updateBar).observe(journalRoot, { attributes: true, attributeFilter: ['hidden'] });
 
-  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, dock: dock, NO_WORDS_MS: NO_WORDS_MS, TITLE_SILENCE_MS: TITLE_SILENCE_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive, titleListening: function () { return titleListening; } };
+  global.TWGIPensieve._debug = { isApple: isApple, isAndroid: isAndroid, fullTag: fullTag, deviceLang: deviceLang, langChain: langChain, langsTried: function () { return langsTried(); }, standalone: standalone, oneMicJob: oneMicJob, joinPieces: joinPieces, updateBar: updateBar, liftBar: liftBar, sizePensieveFold: sizePensieveFold, dock: dock, NO_WORDS_MS: NO_WORDS_MS, TITLE_SILENCE_MS: TITLE_SILENCE_MS, liveWords: liveWords, liveKind: function () { return liveKind; }, closeLive: closeLive, titleListening: function () { return titleListening; } };
   describeSupport();
   setRecordingUI(false);
   function wire() { global.TWGIAccount.subscribe(show); }
