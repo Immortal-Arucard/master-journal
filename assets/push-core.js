@@ -12,6 +12,7 @@
   var PUSH_API = 'https://push.theworldgovernmentincorporated.com';
   var DEVICE_KEY = 'twgi-push-device-v1';
   var IOS_HINT = 'On iPhone or iPad, notifications work only from the Home Screen app: tap Share, then Add to Home Screen, then open the app from its icon (iOS 16.4 or newer).';
+  var DENIED_NOTE = 'Notifications are blocked for this app. On this phone: long-press the Journal icon, tap App info, then Notifications, and turn them on. Or open the Journal in Chrome, tap the icon beside the address, then Permissions or Site settings, and allow Notifications.';
 
   // Pure check, easy to test: { ok, reason, note }
   function support(env) {
@@ -22,7 +23,7 @@
       return { ok: false, reason: 'unsupported', note: 'This browser cannot show notifications from this app.', ios: ios };
     }
     if (env.permission === 'denied') {
-      return { ok: false, reason: 'denied', note: 'Notifications are blocked for this site. Allow them in your browser or phone settings, then try again.', ios: ios };
+      return { ok: false, reason: 'denied', note: DENIED_NOTE, ios: ios };
     }
     return { ok: true, reason: '', note: '', ios: ios };
   }
@@ -113,7 +114,9 @@
     if (!check.ok) return check;
     if (!userId) return { ok: false, reason: 'signin', note: 'Sign in first, then turn on notifications.' };
     var permission = await global.Notification.requestPermission();
-    if (permission !== 'granted') return { ok: false, reason: 'denied', note: 'Notifications stay off until you allow them.' };
+    if (permission !== 'granted') {
+      return { ok: false, reason: 'denied', note: permission === 'denied' ? DENIED_NOTE : 'Notifications stay off until you allow them.' };
+    }
     var config = await call('GET', '/api/push/config');
     if (!config || !config.configured || !config.publicKey) {
       return { ok: false, reason: 'not-configured', note: 'The notification service is not switched on yet.' };
@@ -144,6 +147,7 @@
   return {
     PUSH_API: PUSH_API,
     IOS_HINT: IOS_HINT,
+    DENIED_NOTE: DENIED_NOTE,
     support: support,
     currentEnv: currentEnv,
     currentSupport: function () { return support(currentEnv()); },

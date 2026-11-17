@@ -18,6 +18,8 @@
   var emailInput = document.getElementById('login-email');
   var submit = document.getElementById('login-submit');
   var google = document.getElementById('login-google');
+  var intro = document.getElementById('login-intro');
+  var account = document.getElementById('login-account');
 
   function say(text) {
     if (status) status.textContent = text || '';
@@ -127,13 +129,19 @@
     var email = session && session.user && session.user.email;
     if (!email) {
       if (who) who.textContent = '';
+      if (intro) intro.hidden = false;
+      if (account) account.hidden = true;
       if (form) form.hidden = false;
       if (sessionBox) sessionBox.hidden = true;
+      document.title = 'Sign in — Journal';
       setReady(true);
       return;
     }
+    if (intro) intro.hidden = true;
+    if (account) account.hidden = false;
     if (form) form.hidden = true;
     if (sessionBox) sessionBox.hidden = false;
+    document.title = 'Your account — Journal';
     setReady(false);
     if (who) who.textContent = 'Signed in as ' + email + '.';
   }

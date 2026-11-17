@@ -3,8 +3,8 @@
 Private journal app for TWGI master accounts, served at
 https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (branch `main`, root).
 
-- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v16`).
-- Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap. Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
+- Static PWA: `index.html`, `login/`, `manifest.webmanifest`, `sw.js` (cache `master-journal-v18`).
+- Daily reminder (`assets/push-core.js`, `assets/push-ui.js`): optional "Time to journal" push at a chosen time, from the push service at `https://push.theworldgovernmentincorporated.com`. Permission only after a tap (Settings, or saving a note reminder / Enable notifications in the reminder editor). Only the reminder time, on/off and time zone are sent, never entries. `sw.js` handles `push` and `notificationclick`.
 - Sign-in: same Supabase project as the main site, public publishable key only, email link + Google.
 - Entries are kept on the device in localStorage `twgi-journal-v1:<user id>` and, since v4, sync
   across devices (`assets/cloud-sync.js` + `assets/journal-sync.js`, SQL `supabase/master_journal_sync.sql`,
@@ -197,4 +197,35 @@ https://master-journal.theworldgovernmentincorporated.com/ from GitHub Pages (br
   reworded so they do not read "the The Pensieve".
 - Version label "Journal v16", cache `master-journal-v16`, precache with `?v=16`.
 - Publishing: replace `index.html`, `sw.js`, `assets/pensieve.js`, `README.md`.
+  No SQL, no Worker change.
+
+## v17 — Reminder notification permission
+- Saving a note reminder now asks this phone for notification permission from that
+  same tap, when permission has not been decided yet or is already allowed but this
+  device is not subscribed. The reminder editor also has an Enable notifications
+  button that does the same.
+- It no longer says notifications are off when they were never asked for. Instead it
+  explains that saving will ask this phone to allow them.
+- If notifications are blocked, it does not ask again. It shows Android steps:
+  long-press the Journal icon, tap App info, then Notifications, and turn them on;
+  or open the Journal in Chrome, tap the icon beside the address, then Permissions
+  or Site settings, and allow Notifications.
+- If permission is allowed but this phone cannot subscribe, the reminder is still
+  saved and the status says how to retry under Settings, Daily journal reminder.
+- Version label "Journal v17", cache `master-journal-v17`, precache with `?v=17`.
+- Publishing: replace `index.html`, `sw.js`, `assets/journal-ui.js`,
+  `assets/push-core.js`, `README.md`. No SQL, no Worker change.
+
+## v18 — Journal settings from the account page
+- The account / sign-in page footer, and the same footer on the Journal home page
+  and the not-found page, now start with a Journal settings link. It stays inside
+  the app and opens Settings (`/#settings`), where Daily journal reminder and
+  Enable notifications live. Signed-out users who tap it land on the Journal's
+  sign-in prompt; after they sign in, the same address opens Settings.
+- When you are signed in, that account page hides the sign-in heading and
+  explanation entirely. It shows "Your account", "Signed in as" your email,
+  Open my Journal, Sign out, and the footer.
+- Version label "Journal v18", cache `master-journal-v18`, precache with `?v=18`.
+- Publishing: replace `index.html`, `login/index.html`, `404.html`, `sw.js`,
+  `assets/login.js`, `assets/journal-ui.js`, `assets/app.css`, `README.md`.
   No SQL, no Worker change.

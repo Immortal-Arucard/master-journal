@@ -41,6 +41,7 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-s
 .app-footer{align-self:stretch;max-width:760px;width:100%;margin:40px auto 0;padding:16px;border-top:1px solid var(--line);color:var(--mute);font-size:13px}
 .app-footer nav{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px}
 .app-footer a{color:var(--sky);text-decoration:none;min-height:32px;display:inline-flex;align-items:center}
+#settings,#journal-reminder{scroll-margin-top:72px}
 .offline-pill{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute);font-size:12px}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
 .journal{margin-top:22px;min-width:0}

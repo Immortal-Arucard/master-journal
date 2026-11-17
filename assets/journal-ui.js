@@ -4,7 +4,9 @@
    reminder?" (Add reminder / No thanks). Each note can add, edit, switch
    off/on or delete its reminder later. A small bell tag shows on notes
    that have one. Opening /?note=<id> (tapping the notification) scrolls to
-   and highlights that note. */
+   and highlights that note. v17: saving a reminder, or tapping Enable
+   notifications in the editor, asks permission from that tap when it has
+   not been decided yet. */
 (function () {
   var root = document.getElementById('journal');
   var gate = document.getElementById('journal-signin');
@@ -67,6 +69,52 @@
     return R && R.validTimeZone(tz) ? tz : 'America/New_York';
   }
   function editorChanged() { document.dispatchEvent(new CustomEvent('twgi-journal-editor')); }
+
+  var ASK_NOTE = 'When you save, the Journal will ask this phone to allow notifications so the reminder can arrive.';
+  var GRANTED_UNSUB_NOTE = 'Notifications are allowed, but this phone is not subscribed yet. Tap Enable notifications, or save the reminder and the Journal will try to subscribe.';
+  var RETRY_NOTE = ' The reminder is saved, but this phone is not subscribed yet. Open Settings, Daily journal reminder, and tap Enable notifications to try again.';
+  function deniedNote() {
+    var Push = window.TWGIPush;
+    if (Push && Push.DENIED_NOTE) return Push.DENIED_NOTE;
+    return 'Notifications are blocked for this app. On this phone: long-press the Journal icon, tap App info, then Notifications, and turn them on. Or open the Journal in Chrome, tap the icon beside the address, then Permissions or Site settings, and allow Notifications.';
+  }
+  function pushStatus() {
+    var Push = window.TWGIPush;
+    if (!Push) return { kind: 'none', note: '' };
+    if (Push.isOn('journal', userId)) return { kind: 'on', note: '' };
+    var support = typeof Push.currentSupport === 'function' ? Push.currentSupport() : { ok: true, reason: '', note: '' };
+    var perm = (window.Notification && window.Notification.permission) || 'default';
+    if (support.reason === 'denied' || perm === 'denied') return { kind: 'denied', note: support.note || deniedNote() };
+    if (support.reason === 'unsupported' || support.reason === 'ios-install') return { kind: 'unsupported', note: support.note || 'This browser cannot show notifications from this app.' };
+    if (perm === 'granted') return { kind: 'granted-off', note: GRANTED_UNSUB_NOTE };
+    return { kind: 'ask', note: ASK_NOTE };
+  }
+  /* Start enable() from a tap, before any other await. Never re-asks when blocked. */
+  function startEnable() {
+    var Push = window.TWGIPush;
+    if (!Push || typeof Push.enable !== 'function' || !userId || Push.isOn('journal', userId)) return null;
+    var st = pushStatus();
+    if (st.kind === 'denied' || st.kind === 'unsupported' || st.kind === 'on' || st.kind === 'none') return null;
+    return Push.enable('journal', userId);
+  }
+  function afterEnable(r, okMsg, failPrefix) {
+    if (r && r.ok) { say(okMsg || (r.note || 'Notifications are on for this device.')); return 'ok'; }
+    var perm = (window.Notification && window.Notification.permission) || 'default';
+    var st = pushStatus();
+    var prefix = failPrefix || '';
+    if (perm === 'denied' || st.kind === 'denied') { say(prefix + deniedNote()); return 'denied'; }
+    if (r && (r.reason === 'ios-install' || r.reason === 'unsupported')) {
+      say(prefix + (r.note || st.note || ''));
+      return 'unsupported';
+    }
+    if (r && r.reason === 'denied') {
+      say(prefix + (r.note || 'Notifications stay off until you allow them.'));
+      return 'retry';
+    }
+    say(prefix + RETRY_NOTE.trim());
+    return 'retry';
+  }
+
 
   var originalIds = {};
   var originalDurations = {};
@@ -313,6 +361,17 @@
   cancelBtn.addEventListener('click', function () { resetForm(); say(''); });
   searchInput.addEventListener('input', render);
 
+  /* /#settings (and /#journal-reminder) open Settings after sign-in.
+     The journal block is hidden until then, so the browser cannot scroll on load. */
+  function openHashTarget() {
+    var id = (location.hash || '').replace(/^#/, '');
+    if (id !== 'settings' && id !== 'settings-h' && id !== 'journal-reminder') return;
+    var el = document.getElementById(id === 'settings-h' ? 'settings' : id) || document.getElementById('settings');
+    if (!el || root.hidden) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    catch (err) { try { el.scrollIntoView(); } catch (e2) {} }
+  }
+
   function show(state) {
     var signedIn = !!(state && state.user && state.user.id);
     userId = signedIn ? state.user.id : '';
@@ -322,8 +381,10 @@
       resetForm();
       refreshOriginals();
       if (pendingTarget) { var t = pendingTarget; if (J.list(userId).some(function (e) { return e.id === t; })) { pendingTarget = ''; openTarget(t); } }
+      else openHashTarget();
     }
   }
+  window.addEventListener('hashchange', function () { if (!root.hidden) openHashTarget(); });
 
   // v4: entries changed on another device (cloud sync) repaint the list.
   // v6: not while a reminder editor is open (it would interrupt typing); the
@@ -494,11 +555,46 @@
 
     var warn = el('p', 'note rem-warn'); warn.setAttribute('data-r', 'warn');
     var notes = [];
-    if (window.TWGIPush && !window.TWGIPush.isOn('journal', userId)) notes.push('Notifications are off on this device. Turn them on under Settings, Daily journal reminder, on each device where you want reminders.');
+    var st = pushStatus();
+    if (st.kind === 'ask' || st.kind === 'granted-off' || st.kind === 'denied' || st.kind === 'unsupported') notes.push(st.note);
     if (J.sync.reminders === 'off') notes.push('The reminder service is not switched on yet. Your reminder is saved and will start arriving once it is.');
     warn.textContent = notes.join(' ');
     warn.hidden = !notes.length;
     form.appendChild(warn);
+    var enBtn = null;
+    if (st.kind === 'ask' || st.kind === 'granted-off') {
+      enBtn = el('button', 'take', 'Enable notifications');
+      enBtn.type = 'button';
+      enBtn.setAttribute('data-r', 'enable');
+      enBtn.addEventListener('click', function () {
+        var work = startEnable();
+        if (!work) return;
+        enBtn.disabled = true;
+        Promise.resolve(work).then(function (r) {
+          var outcome = afterEnable(r, r && r.note ? r.note : 'Notifications are on for this device.', '');
+          if (outcome === 'ok') {
+            warn.hidden = true;
+            warn.textContent = '';
+            enBtn.hidden = true;
+            return;
+          }
+          enBtn.disabled = false;
+          if (outcome === 'denied' || outcome === 'unsupported') {
+            warn.textContent = (pushStatus().note || deniedNote());
+            warn.hidden = false;
+            enBtn.hidden = true;
+            return;
+          }
+          warn.textContent = RETRY_NOTE.trim();
+          warn.hidden = false;
+        }).catch(function () {
+          enBtn.disabled = false;
+          warn.textContent = RETRY_NOTE.trim();
+          warn.hidden = false;
+        });
+      });
+      form.appendChild(enBtn);
+    }
 
     var row = el('div', 'actions');
     var save = el('button', 'take', 'Save reminder'); save.type = 'submit'; save.setAttribute('data-r', 'save');
@@ -550,12 +646,24 @@
       if (!value) { err.textContent = 'Choose a date and time for the reminder.'; return; }
       var next = R.next(value, Date.now());
       if (value.on && !next) { err.textContent = 'That time has already passed. Pick a later time or a repeat.'; return; }
+      /* Start enable() from this tap, before any other await, when notifications
+         are not on and permission is default or already granted. */
+      var enabling = value.on ? startEnable() : null;
       try { J.setReminder(userId, entry.id, value); }
       catch (e) { err.textContent = e && e.message ? e.message : 'Could not save the reminder.'; return; }
       var msg = value.on ? 'Reminder saved. ' + R.describe(value) + '. Next: ' + R.formatWhen(next, value.tz) + '.' : 'Reminder saved and switched off.';
       if (J.sync.enabled) msg += ' It syncs to your other devices.';
-      if (window.TWGIPush && !window.TWGIPush.isOn('journal', userId)) msg += ' Turn on notifications under Settings to get it on this device.';
+      if (!enabling) {
+        var late = pushStatus();
+        if (value.on && (late.kind === 'denied' || late.kind === 'unsupported')) msg += ' ' + late.note;
+        closeEditor(msg);
+        return;
+      }
       closeEditor(msg);
+      Promise.resolve(enabling).then(function (r) {
+        if (r && r.ok) { say(msg); return; }
+        afterEnable(r, msg, msg + ' ');
+      }).catch(function () { say(msg + RETRY_NOTE); });
     });
     return form;
   }
