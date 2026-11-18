@@ -362,14 +362,46 @@
   searchInput.addEventListener('input', render);
 
   /* /#settings (and /#journal-reminder) open Settings after sign-in.
-     The journal block is hidden until then, so the browser cannot scroll on load. */
+     The journal block is hidden until then, so the browser cannot scroll on load.
+     v19: Settings lives in a collapsed details bar; those links must expand it first. */
+  function settingsDetails() {
+    var doc = (root && root.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+    if (!doc || !doc.getElementById) return null;
+    return doc.getElementById('settings-details') || doc.querySelector('#settings details');
+  }
+  function syncSettingsFold() {
+    var fold = settingsDetails();
+    if (!fold) return;
+    var sum = fold.querySelector('summary');
+    if (sum) sum.setAttribute('aria-expanded', fold.open ? 'true' : 'false');
+  }
+  function expandSettings() {
+    var fold = settingsDetails();
+    if (fold) fold.open = true;
+    syncSettingsFold();
+  }
+  function openSettings(id) {
+    if (root.hidden) return false;
+    expandSettings();
+    var targetId = id || 'settings';
+    if (targetId === 'settings-h') targetId = 'settings';
+    var el = document.getElementById(targetId) || document.getElementById('settings');
+    if (!el) return false;
+    function scrollToSettings() {
+      var header = document.querySelector('.app-header');
+      var margin = ((header && header.getBoundingClientRect().height) || 72) + 8;
+      el.style.scrollMarginTop = margin + 'px';
+      try { el.scrollIntoView({ block: 'start' }); }
+      catch (err) {}
+    }
+    scrollToSettings();
+    setTimeout(scrollToSettings, 200);
+    return true;
+  }
   function openHashTarget() {
     var id = (location.hash || '').replace(/^#/, '');
     if (id !== 'settings' && id !== 'settings-h' && id !== 'journal-reminder') return;
-    var el = document.getElementById(id === 'settings-h' ? 'settings' : id) || document.getElementById('settings');
-    if (!el || root.hidden) return;
-    try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    catch (err) { try { el.scrollIntoView(); } catch (e2) {} }
+    openSettings(id);
   }
 
   function show(state) {
@@ -385,6 +417,27 @@
     }
   }
   window.addEventListener('hashchange', function () { if (!root.hidden) openHashTarget(); });
+  var settingsFold = settingsDetails();
+  if (settingsFold) {
+    settingsFold.addEventListener('toggle', syncSettingsFold);
+    var settingsSummary = settingsFold.querySelector('summary');
+    if (settingsSummary) {
+      settingsSummary.addEventListener('click', function () { setTimeout(syncSettingsFold, 0); });
+    }
+    syncSettingsFold();
+  }
+  document.addEventListener('click', function (ev) {
+    var a = ev.target && ev.target.closest && ev.target.closest('a[href="#settings"], a[href="/#settings"], a[href="#journal-reminder"], a[href="/#journal-reminder"]');
+    if (!a || root.hidden) return;
+    var href = a.getAttribute('href') || '';
+    var id = href.indexOf('#') >= 0 ? href.slice(href.indexOf('#') + 1) : '';
+    if (id !== 'settings' && id !== 'journal-reminder') return;
+    /* Already on this hash: hashchange will not fire, so expand and scroll now. */
+    if (location.hash === '#' + id) {
+      ev.preventDefault();
+      openSettings(id);
+    }
+  });
 
   // v4: entries changed on another device (cloud sync) repaint the list.
   // v6: not while a reminder editor is open (it would interrupt typing); the
@@ -699,7 +752,7 @@
       if (data && data.type === 'twgi-open') { var id = noteFromUrl(data.url); if (id) openTarget(id); }
     });
   }
-  window.TWGIJournalUI = { openTarget: openTarget, askReminder: askReminder, editorOpen: function () { return !!editorId; } };
+  window.TWGIJournalUI = { openTarget: openTarget, askReminder: askReminder, editorOpen: function () { return !!editorId; }, openSettings: openSettings };
 
   function wire() { window.TWGIAccount.subscribe(show); }
   if (window.TWGIAccount) wire();
